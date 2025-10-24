@@ -38,26 +38,23 @@ const upload = multer({
   }
 });
 
-// Middleware
+// CORS Configuration - MUST BE FIRST
 app.use(cors({
   origin: config.CORS_ORIGIN,
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
+// Body parsers - for JSON and URL-encoded data
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging
+// Request logging middleware
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
   next();
 });
-
-// Apply multer to STT route only
-app.post('/api/stt', upload.single('audio'), (req, res, next) => next());
-
-// Mount routes
-app.use('/api', routes);
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -72,6 +69,22 @@ app.get('/', (req, res) => {
     }
   });
 });
+
+// Health check route (no multer needed)
+app.get('/api/health', routes);
+
+// STT route - WITH multer middleware for file upload
+app.post('/api/stt', upload.single('audio'), async (req, res, next) => {
+  // The file is now available in req.file
+  // Forward to the routes handler
+  routes(req, res, next);
+});
+
+// TTS route - NO multer needed (just JSON)
+app.post('/api/tts', routes);
+
+// Mount other API routes (without multer)
+app.use('/api', routes);
 
 // 404 handler
 app.use((req, res) => {
@@ -101,14 +114,16 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-const server = app.listen(config.PORT, () => {
+const PORT = config.PORT;
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log('');
   console.log('🚀 ============================================');
   console.log(`✅ Express Backend Server Started`);
-  console.log(`📡 Port: ${config.PORT}`);
+  console.log(`📡 Port: ${PORT}`);
   console.log(`🌍 Environment: ${config.NODE_ENV}`);
   console.log(`🔗 Python API: ${config.PYTHON_API_URL}`);
-  console.log(`🎯 API URL: http://localhost:${config.PORT}/api`);
+  console.log(`🎯 Local: http://localhost:${PORT}`);
+  console.log(`🎯 Network: http://0.0.0.0:${PORT}`);
   console.log('🚀 ============================================');
   console.log('');
 });
