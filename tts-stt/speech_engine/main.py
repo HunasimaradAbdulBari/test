@@ -173,63 +173,118 @@ def speech_to_text():
         print("🎙️ [Flask STT] Request received")
         print("=" * 60)
         
-        # Check for audio file
+        # Debug: Print all received data
+        print(f"📋 Request method: {request.method}")
+        print(f"📋 Content-Type: {request.content_type}")
+        print(f"📋 Files in request: {list(request.files.keys())}")
+        print(f"📋 Form data keys: {list(request.form.keys())}")
+        
+        # Check for audio file with detailed error
         if 'audio' not in request.files:
-            print("❌ No audio file in request")
-            print(f"   Files received: {list(request.files.keys())}")
-            return jsonify({"error": "No audio file provided"}), 400
+            error_msg = "No audio file in request"
+            print(f"❌ {error_msg}")
+            print(f"   Available files: {list(request.files.keys())}")
+            print(f"   Available form: {list(request.form.keys())}")
+            return jsonify({
+                "error": error_msg,
+                "received_files": list(request.files.keys()),
+                "received_form": list(request.form.keys())
+            }), 422
         
         audio_file = request.files['audio']
         language = request.form.get('language', 'en')
         
-        print(f"📁 File: {audio_file.filename}")
+        print(f"📁 Filename: {audio_file.filename}")
         print(f"📁 Content-Type: {audio_file.content_type}")
         print(f"🌍 Language: {language}")
         
+        # Check if file is empty
+        audio_file.seek(0, 2)  # Seek to end
+        file_size = audio_file.tell()
+        audio_file.seek(0)  # Seek back to start
+        
+        print(f"📏 File size: {file_size} bytes")
+        
+        if file_size == 0:
+            return jsonify({"error": "Audio file is empty"}), 422
+        
         if not audio_file.filename:
-            return jsonify({"error": "Invalid audio file"}), 400
+            return jsonify({"error": "Invalid audio filename"}), 422
         
         # Save uploaded file temporarily
         file_id = str(uuid.uuid4())[:8]
-        original_ext = Path(audio_file.filename).suffix
+        original_ext = Path(audio_file.filename).suffix if audio_file.filename else '.webm'
         temp_filename = f"temp_{file_id}{original_ext}"
         temp_path = TEMP_DIR / temp_filename
         
+        print(f"💾 Saving to: {temp_path}")
         audio_file.save(str(temp_path))
-        print(f"💾 Saved to: {temp_path}")
+        
+        # Verify file was saved
+        if not temp_path.exists():
+            raise Exception("Failed to save uploaded file")
+        
+        saved_size = temp_path.stat().st_size
+        print(f"✅ Saved successfully: {saved_size} bytes")
         
         # Convert to WAV if needed
+        wav_path = temp_path
         if not str(temp_path).endswith('.wav'):
             try:
+                print("🔄 Converting to WAV...")
                 from pydub import AudioSegment
                 audio = AudioSegment.from_file(str(temp_path))
                 wav_path = temp_path.with_suffix('.wav')
                 audio.export(str(wav_path), format='wav')
                 
                 # Clean up original file
-                if temp_path.exists():
+                if temp_path.exists() and temp_path != wav_path:
                     temp_path.unlink()
                 temp_path = wav_path
-                print(f"🔄 Converted to WAV: {wav_path}")
+                print(f"✅ Converted to WAV: {wav_path}")
+            except ImportError:
+                print("⚠️ pydub not available, trying without conversion")
             except Exception as conv_error:
-                print(f"⚠️ Conversion warning: {conv_error}")
+                print(f"⚠️ Conversion failed: {conv_error}")
+                print("   Attempting to use original file...")
         
         # Transcribe using speech_recognition
-        with sr.AudioFile(str(temp_path)) as source:
-            print("🔍 Processing audio...")
-            recognizer.adjust_for_ambient_noise(source, duration=0.5)
-            audio_data = recognizer.record(source)
+        print("🔍 Starting transcription...")
+        try:
+            with sr.AudioFile(str(temp_path)) as source:
+                print("📖 Reading audio file...")
+                recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                audio_data = recognizer.record(source)
+                print(f"✅ Audio loaded successfully")
+        except Exception as audio_error:
+            print(f"❌ Failed to read audio file: {audio_error}")
+            return jsonify({
+                "error": "Failed to read audio file",
+                "detail": str(audio_error)
+            }), 422
         
-        print("🧠 Recognizing speech...")
+        print("🧠 Recognizing speech with Google API...")
         
-        # Use Google Speech Recognition
-        text = recognizer.recognize_google(
-            audio_data,
-            language=LANGUAGE_MAP.get(language, 'en')
-        )
+        try:
+            text = recognizer.recognize_google(
+                audio_data,
+                language=LANGUAGE_MAP.get(language, 'en')
+            )
+        except sr.UnknownValueError:
+            print("❌ Speech not clear enough")
+            return jsonify({
+                "error": "Could not understand the audio",
+                "detail": "Speech was not clear enough for transcription"
+            }), 400
+        except sr.RequestError as e:
+            print(f"❌ Google API error: {e}")
+            return jsonify({
+                "error": "Speech recognition service error",
+                "detail": str(e)
+            }), 500
         
-        print(f"✅ Success!")
-        print(f"   Transcribed: {text}")
+        print(f"✅ Transcription successful!")
+        print(f"   Text: {text}")
         print("=" * 60 + "\n")
         
         return jsonify({
@@ -239,21 +294,15 @@ def speech_to_text():
             "duration": None
         }), 200
         
-    except sr.UnknownValueError:
-        print("❌ Could not understand the audio")
-        print("=" * 60 + "\n")
-        return jsonify({"error": "Could not understand the audio"}), 400
-        
-    except sr.RequestError as e:
-        print(f"❌ Speech recognition service error: {e}")
-        print("=" * 60 + "\n")
-        return jsonify({"error": f"Speech recognition service error: {str(e)}"}), 500
-        
     except Exception as e:
-        print(f"❌ STT Error: {str(e)}")
+        print(f"\n❌ STT Error: {str(e)}")
+        print(f"   Type: {type(e).__name__}")
         print(traceback.format_exc())
         print("=" * 60 + "\n")
-        return jsonify({"error": f"STT processing failed: {str(e)}"}), 500
+        return jsonify({
+            "error": f"STT processing failed: {str(e)}",
+            "type": type(e).__name__
+        }), 500
         
     finally:
         # Clean up temp file
