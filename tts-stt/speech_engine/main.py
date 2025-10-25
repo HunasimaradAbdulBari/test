@@ -5,7 +5,6 @@ import uuid
 import speech_recognition as sr
 from gtts import gTTS
 import traceback
-from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 
@@ -75,19 +74,30 @@ def health_check():
 def text_to_speech():
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
-        return '', 204
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST')
+        return response, 200
         
     try:
         print("\n" + "=" * 60)
         print("🔊 [Flask TTS] Request received")
+        print(f"   Content-Type: {request.content_type}")
+        print(f"   Method: {request.method}")
         print("=" * 60)
         
-        # Get JSON data
-        if not request.is_json:
-            print(f"❌ Invalid Content-Type: {request.content_type}")
-            return jsonify({"error": "Content-Type must be application/json"}), 400
-            
-        data = request.get_json()
+        # Get JSON data - be flexible with content type
+        data = None
+        if request.is_json:
+            data = request.get_json()
+        elif request.data:
+            import json
+            try:
+                data = json.loads(request.data.decode('utf-8'))
+            except:
+                pass
+        
         if not data:
             print("❌ No JSON data received")
             return jsonify({"error": "No JSON data provided"}), 400
@@ -157,7 +167,11 @@ def text_to_speech():
 def speech_to_text():
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
-        return '', 204
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST')
+        return response, 200
     
     temp_path = None
     try:
@@ -192,16 +206,20 @@ def speech_to_text():
         
         # Convert to WAV if needed (speech_recognition requires WAV)
         if not temp_path.endswith('.wav'):
-            from pydub import AudioSegment
-            audio = AudioSegment.from_file(temp_path)
-            wav_path = temp_path.rsplit('.', 1)[0] + '.wav'
-            audio.export(wav_path, format='wav')
-            
-            # Clean up original file
-            if os.path.exists(temp_path):
-                os.remove(temp_path)
-            temp_path = wav_path
-            print(f"🔄 Converted to WAV: {wav_path}")
+            try:
+                from pydub import AudioSegment
+                audio = AudioSegment.from_file(temp_path)
+                wav_path = temp_path.rsplit('.', 1)[0] + '.wav'
+                audio.export(wav_path, format='wav')
+                
+                # Clean up original file
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                temp_path = wav_path
+                print(f"🔄 Converted to WAV: {wav_path}")
+            except Exception as conv_error:
+                print(f"⚠️ Conversion warning: {conv_error}")
+                print("   Attempting to use file as-is...")
         
         # Transcribe using speech_recognition
         with sr.AudioFile(temp_path) as source:
@@ -274,7 +292,14 @@ def not_found(e):
     return jsonify({
         "error": "Endpoint not found",
         "path": request.path,
-        "method": request.method
+        "method": request.method,
+        "available_endpoints": [
+            "GET /",
+            "GET /health",
+            "POST /api/v1/tts",
+            "POST /api/v1/stt",
+            "GET /static/audio/<filename>"
+        ]
     }), 404
 
 @app.errorhandler(500)
@@ -299,7 +324,7 @@ if __name__ == '__main__':
     for rule in app.url_map.iter_rules():
         print(f"   {rule.methods} {rule.rule}")
     
-    print("\n=" * 60)
+    print("\n" + "=" * 60)
     print("📝 Press CTRL+C to stop")
     print("=" * 60 + "\n")
     
