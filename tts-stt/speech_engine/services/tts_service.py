@@ -36,22 +36,41 @@ class TTSService:
             filename = f"speech_{file_id}.mp3"
             file_path = self.output_dir / filename
             
+            print(f"🔊 Generating speech for language: {language}")
+            
             # Try Edge-TTS first
             try:
                 await self._generate_edge_tts(text, language, str(file_path), speed)
                 method = "edge-tts"
+                print(f"✅ Edge-TTS generation successful")
             except Exception as e:
                 print(f"⚠️ Edge-TTS failed: {e}, trying gTTS...")
                 await self._generate_gtts(text, language, str(file_path))
                 method = "gtts"
+                print(f"✅ gTTS generation successful")
+            
+            # Verify file was created
+            if not file_path.exists():
+                raise Exception(f"Audio file was not created: {file_path}")
             
             # Get file size
-            file_size = os.path.getsize(file_path) if file_path.exists() else 0
+            file_size = os.path.getsize(file_path)
             
             # Get audio duration (approximate)
             duration = self._estimate_duration(text, speed)
             
-            audio_url = f"http://localhost:{os.getenv('PORT', 8000)}/static/audio/{filename}"
+            # Build audio URL - use environment variable or default
+            host = os.getenv("HOST", "0.0.0.0")
+            port = os.getenv("PORT", "8000")
+            
+            # For local development, use localhost
+            if host == "0.0.0.0":
+                host = "localhost"
+            
+            audio_url = f"http://{host}:{port}/static/audio/{filename}"
+            
+            print(f"📁 Audio file created: {file_path}")
+            print(f"🔗 Audio URL: {audio_url}")
             
             return {
                 "audio_url": audio_url,
@@ -62,12 +81,15 @@ class TTSService:
                     "file_size": file_size,
                     "duration": duration,
                     "speed": speed,
-                    "pitch": pitch
+                    "pitch": pitch,
+                    "filename": filename
                 }
             }
             
         except Exception as e:
             print(f"❌ TTS generation error: {e}")
+            import traceback
+            traceback.print_exc()
             raise Exception(f"Speech generation failed: {str(e)}")
     
     async def _generate_edge_tts(self, text: str, language: str, output_path: str, speed: float):

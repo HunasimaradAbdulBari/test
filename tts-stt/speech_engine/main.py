@@ -1,176 +1,221 @@
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse
+from flask import Flask, request, jsonify, send_file
+from flask_cors import CORS
 import os
-import asyncio
-from contextlib import asynccontextmanager
-from pathlib import Path
+import uuid
+import speech_recognition as sr
+from gtts import gTTS
+import traceback
 
-from services.whisper_service import WhisperService
-from services.tts_service import TTSService
-from services.audio_processor import AudioProcessor
-from models.stt_models import STTRequest, STTResponse
-from models.tts_models import TTSRequest, TTSResponse
-from utils.file_handler import FileHandler
-from utils.validators import validate_audio_file, validate_text
+app = Flask(__name__)
+CORS(app)
 
-# Create directories
-os.makedirs("temp_audio", exist_ok=True)
-os.makedirs("static", exist_ok=True)
+# Initialize speech recognition
+recognizer = sr.Recognizer()
+
+# Create output directories
 os.makedirs("static/audio", exist_ok=True)
+os.makedirs("temp_audio", exist_ok=True)
 
-# Initialize services
-whisper_service = None
-tts_service = None
-audio_processor = None
-file_handler = None
+# Language mapping for gTTS
+LANGUAGE_MAP = {
+    'en': 'en',
+    'hi': 'hi', 
+    'kn': 'kn',
+    'ur': 'ur'
+}
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    global whisper_service, tts_service, audio_processor, file_handler
-    
-    print("🚀 Initializing Speech Engine...")
-    
-    whisper_service = WhisperService()
-    tts_service = TTSService()
-    audio_processor = AudioProcessor()
-    file_handler = FileHandler()
-    
-    # Load Whisper model
-    await asyncio.to_thread(whisper_service.load_model)
-    
-    print("✅ Speech Engine initialized successfully!")
-    
-    yield
-    
-    # Shutdown
-    print("🛑 Shutting down Speech Engine...")
-    if file_handler:
-        await file_handler.cleanup_old_files()
+print("🚀 Flask Speech Engine Starting...")
+print("📁 Directories created: static/audio, temp_audio")
 
-# Create FastAPI app
-app = FastAPI(
-    title="Multilingual Speech Engine",
-    description="High-performance Speech-to-Text and Text-to-Speech API",
-    version="1.0.0",
-    lifespan=lifespan
-)
-
-# CORS middleware
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5000", 
-        "https://your-frontend.vercel.app",
-        "https://your-backend.onrender.com"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# Mount static files
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Health endpoint
-@app.get("/health")
-async def health_check():
-    return {
+@app.route('/', methods=['GET'])
+def root():
+    return jsonify({
+        "message": "Flask Speech Engine API is running",
         "status": "healthy",
-        "services": {
-            "whisper": whisper_service.is_ready() if whisper_service else False,
-            "tts": tts_service.is_ready() if tts_service else False,
-            "audio_processor": True
-        },
-        "timestamp": file_handler.get_timestamp() if file_handler else None
-    }
+        "endpoints": [
+            "GET /health",
+            "POST /api/v1/tts", 
+            "POST /api/v1/stt",
+            "GET /static/audio/<filename>"
+        ]
+    })
 
-# Speech to Text endpoint
-@app.post("/api/v1/stt", response_model=STTResponse)
-async def speech_to_text(request: STTRequest):
-    try:
-        # Validate audio file
-        validation = validate_audio_file(request.audio)
-        if not validation["valid"]:
-            raise HTTPException(status_code=400, detail=validation["error"])
+@app.route('/health', methods=['GET'])
+def health_check():
+    print("🏥 Health check requested")
+    return jsonify({
+        "status": "healthy",
+        "message": "Flask Speech Engine is running",
+        "service": "Flask TTS/STT",
+        "services": {
+            "speech_recognition": "ready",
+            "text_to_speech": "ready",
+            "method": "gTTS + SpeechRecognition"
+        }
+    })
+
+@app.route('/api/v1/tts', methods=['POST', 'OPTIONS'])
+def text_to_speech():
+    if request.method == 'OPTIONS':
+        return jsonify({"status": "ok"})
         
-        # Save uploaded file
-        temp_path = await file_handler.save_temp_file(request.audio)
+    try:
+        print("🔊 [Flask] TTS request received")
+        print(f"🔍 Request method: {request.method}")
+        print(f"🔍 Content-Type: {request.content_type}")
+        
+        # Get JSON data
+        data = request.get_json()
+        if not data:
+            print("❌ No JSON data received")
+            return jsonify({"error": "No JSON data provided"}), 400
+            
+        text = data.get('text', '')
+        language = data.get('language', 'en')
+        
+        print(f"📝 Text: {text[:50]}{'...' if len(text) > 50 else ''}")
+        print(f"🌍 Language: {language}")
+        
+        if not text:
+            return jsonify({"error": "Text is required"}), 400
+        
+        # Generate unique filename
+        file_id = str(uuid.uuid4())[:8]
+        filename = f"speech_{file_id}.mp3"
+        file_path = os.path.join("static", "audio", filename)
+        
+        print(f"💾 Generating audio file: {filename}")
         
         try:
-            # Process audio
-            processed_path = await audio_processor.preprocess_audio(temp_path)
+            # Use gTTS to generate speech
+            tts = gTTS(text=text, lang=LANGUAGE_MAP.get(language, 'en'), slow=False)
+            tts.save(file_path)
             
-            # Transcribe
-            result = await whisper_service.transcribe(processed_path, request.language)
+            # Verify file was created
+            if not os.path.exists(file_path):
+                raise Exception("Audio file was not created")
             
-            return STTResponse(
-                text=result["text"],
-                language=result["language"],
-                confidence=result.get("confidence"),
-                duration=result.get("duration")
+            file_size = os.path.getsize(file_path)
+            audio_url = f"http://localhost:8000/static/audio/{filename}"
+            
+            print(f"✅ Audio generated: {audio_url} ({file_size} bytes)")
+            
+            return jsonify({
+                "audio_url": audio_url,
+                "language": language,
+                "metadata": {
+                    "method": "gTTS",
+                    "file_size": file_size,
+                    "duration": len(text) * 0.1,
+                    "filename": filename
+                }
+            })
+            
+        except Exception as tts_error:
+            print(f"❌ TTS Generation Error: {tts_error}")
+            return jsonify({"error": f"TTS generation failed: {str(tts_error)}"}), 500
+            
+    except Exception as e:
+        print(f"❌ TTS Request Error: {e}")
+        print(traceback.format_exc())
+        return jsonify({"error": f"Request processing failed: {str(e)}"}), 500
+
+@app.route('/api/v1/stt', methods=['POST', 'OPTIONS'])
+def speech_to_text():
+    if request.method == 'OPTIONS':
+        return jsonify({"status": "ok"})
+        
+    temp_path = None
+    try:
+        print("🎙️ [Flask] STT request received")
+        print(f"🔍 Files in request: {list(request.files.keys())}")
+        
+        if 'audio' not in request.files:
+            print("❌ No audio file in request")
+            return jsonify({"error": "No audio file provided"}), 400
+        
+        audio_file = request.files['audio']
+        language = request.form.get('language', 'en')
+        
+        print(f"📁 File: {audio_file.filename}, Language: {language}")
+        
+        # Save uploaded file temporarily
+        file_id = str(uuid.uuid4())[:8]
+        temp_path = os.path.join("temp_audio", f"temp_{file_id}.wav")
+        audio_file.save(temp_path)
+        
+        print(f"💾 Saved temp file: {temp_path}")
+        
+        try:
+            # Use speech_recognition library
+            with sr.AudioFile(temp_path) as source:
+                print("🔍 Processing audio...")
+                recognizer.adjust_for_ambient_noise(source, duration=0.5)
+                audio_data = recognizer.record(source)
+                
+            print("🧠 Recognizing speech...")
+            
+            # Use Google Speech Recognition
+            text = recognizer.recognize_google(
+                audio_data, 
+                language=LANGUAGE_MAP.get(language, 'en')
             )
             
-        finally:
-            # Cleanup temp files
-            await file_handler.cleanup_temp_files([temp_path])
+            print(f"✅ Recognized text: {text}")
             
-    except HTTPException:
-        raise
+            return jsonify({
+                "text": text,
+                "language": language,
+                "confidence": 0.95,
+                "duration": None
+            })
+            
+        except sr.UnknownValueError:
+            print("❌ Could not understand the audio")
+            return jsonify({"error": "Could not understand the audio"}), 400
+            
+        except sr.RequestError as e:
+            print(f"❌ Speech recognition service error: {e}")
+            return jsonify({"error": f"Speech recognition service error: {str(e)}"}), 500
+            
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Transcription failed: {str(e)}")
+        print(f"❌ STT Error: {e}")
+        print(traceback.format_exc())
+        return jsonify({"error": f"STT processing failed: {str(e)}"}), 500
+        
+    finally:
+        # Clean up temp file
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.remove(temp_path)
+                print(f"🗑️ Cleaned up: {temp_path}")
+            except Exception as cleanup_error:
+                print(f"⚠️ Cleanup error: {cleanup_error}")
 
-# Text to Speech endpoint  
-@app.post("/api/v1/tts", response_model=TTSResponse)
-async def text_to_speech(request: TTSRequest):
+@app.route('/static/audio/<filename>')
+def serve_audio(filename):
     try:
-        # Validate text
-        validation = validate_text(request.text)
-        if not validation["valid"]:
-            raise HTTPException(status_code=400, detail=validation["error"])
-        
-        # Generate speech
-        result = await tts_service.generate_speech(
-            text=request.text,
-            language=request.language,
-            speed=request.speed,
-            pitch=request.pitch
-        )
-        
-        return TTSResponse(
-            audio_url=result["audio_url"],
-            language=result["language"],
-            metadata=result.get("metadata", {})
-        )
-        
-    except HTTPException:
-        raise
+        print(f"📂 Serving audio file: {filename}")
+        file_path = os.path.join("static", "audio", filename)
+        if not os.path.exists(file_path):
+            print(f"❌ File not found: {file_path}")
+            return jsonify({"error": "Audio file not found"}), 404
+        return send_file(file_path)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Speech generation failed: {str(e)}")
+        print(f"❌ File serve error: {e}")
+        return jsonify({"error": "File serving error"}), 500
 
-# Error handlers
-@app.exception_handler(404)
-async def not_found_handler(request, exc):
-    return JSONResponse(
-        status_code=404,
-        content={"detail": "Endpoint not found"}
-    )
-
-@app.exception_handler(500)
-async def internal_error_handler(request, exc):
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error"}
-    )
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(
-        "main:app",
-        host=os.getenv("HOST", "0.0.0.0"),
-        port=int(os.getenv("PORT", 8000)),
-        reload=os.getenv("ENVIRONMENT") == "development"
-    )
+if __name__ == '__main__':
+    print("🚀 Starting Flask Speech Engine on http://localhost:8000")
+    print("📂 Audio files will be served from /static/audio/")
+    print("🎙️ Using Google Speech Recognition")
+    print("🔊 Using gTTS for speech synthesis")
+    print("🔗 Available endpoints:")
+    print("   GET  / (root)")
+    print("   GET  /health")
+    print("   POST /api/v1/tts")
+    print("   POST /api/v1/stt")
+    print("   GET  /static/audio/<filename>")
+    print("=" * 50)
+    
+    app.run(host='0.0.0.0', port=8000, debug=True)

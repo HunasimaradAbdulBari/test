@@ -1,34 +1,48 @@
-# FastAPI Framework
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-python-multipart==0.0.6
-python-dotenv==1.0.0
-pydantic==2.5.0
-pydantic-settings==2.1.0
+# # FastAPI Framework
+# fastapi==0.104.1
+# uvicorn[standard]==0.24.0
+# python-multipart==0.0.6
+# python-dotenv==1.0.0
+# pydantic==2.5.0
+# pydantic-settings==2.1.0
 
-# Speech Processing - FIXED VERSIONS
-openai-whisper
-faster-whisper==0.10.0
-edge-tts==6.1.9
-gtts==2.4.0
+# # Speech Processing - FIXED VERSIONS
+# openai-whisper
+# faster-whisper==0.10.0
+# edge-tts==6.1.9
+# gtts==2.4.0
 
-# Audio Processing
-pydub==0.25.1
-librosa==0.10.1
-soundfile==0.12.1
-numpy==1.24.3
-scipy==1.11.4
+# # Audio Processing
+# pydub==0.25.1
+# librosa==0.10.1
+# soundfile==0.12.1
+# numpy==1.24.3
+# scipy==1.11.4
 
-# File Handling
-aiofiles==23.2.1
+# # File Handling
+# aiofiles==23.2.1
 
-# HTTP Client  
-httpx==0.25.2
+# # HTTP Client  
+# httpx==0.25.2
 
-# Utilities
-langdetect==1.0.9
-tenacity==8.2.3
+# # Utilities
+# langdetect==1.0.9
+# tenacity==8.2.3
 
-# Additional dependencies that might be needed
-torch
-torchaudio
+# # Additional dependencies that might be needed
+# torch
+# torchaudio
+
+gTTS==2.5.4
+SpeechRecognition==3.14.3
+PyAudio==0.2.14
+pyttsx3==2.99
+playsound==1.2.2
+
+
+# Supporting libraries
+requests==2.32.5
+deep-translator==1.11.4
+beautifulsoup4==4.14.2
+click==8.1.8
+colorama==0.4.6
