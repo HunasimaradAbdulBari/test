@@ -33,21 +33,52 @@
 # torch
 # torchaudio
 
-gTTS==2.5.4
-SpeechRecognition==3.14.3
-PyAudio==0.2.14
-pyttsx3==2.99
-playsound==1.2.2
 
 
-# Supporting libraries
-requests==2.32.5
-deep-translator==1.11.4
-beautifulsoup4==4.14.2
-click==8.1.8
-colorama==0.4.6
+
+
+
+
+
+# gTTS==2.5.4
+# SpeechRecognition==3.14.3
+# PyAudio==0.2.14
+# pyttsx3==2.99
+# playsound==1.2.2
+
+
+# # Supporting libraries
+# requests==2.32.5
+# deep-translator==1.11.4
+# beautifulsoup4==4.14.2
+# click==8.1.8
+# colorama==0.4.6
+
+# # Flask Framework
+# Flask==3.0.0
+# flask-cors==4.0.0
+# Werkzeug==3.0.1
+
+
+
+
+
+
 
 # Flask Framework
 Flask==3.0.0
 flask-cors==4.0.0
 Werkzeug==3.0.1
+
+# Speech Processing
+gTTS==2.5.4
+SpeechRecognition==3.10.0
+
+# Audio Processing
+pydub==0.25.1
+
+# HTTP Client
+requests==2.32.3
+
+# Utilities
+python-dotenv==1.0.0

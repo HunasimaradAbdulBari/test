@@ -5,10 +5,11 @@ import uuid
 import speech_recognition as sr
 from gtts import gTTS
 import traceback
+from pathlib import Path
 
 app = Flask(__name__)
 
-# Enable CORS for all routes
+# Enable CORS
 CORS(app, resources={
     r"/*": {
         "origins": "*",
@@ -21,13 +22,14 @@ CORS(app, resources={
 recognizer = sr.Recognizer()
 
 # Create output directories
-AUDIO_DIR = os.path.join(os.getcwd(), "static", "audio")
-TEMP_DIR = os.path.join(os.getcwd(), "temp_audio")
+BASE_DIR = Path(__file__).parent
+AUDIO_DIR = BASE_DIR / "static" / "audio"
+TEMP_DIR = BASE_DIR / "temp_audio"
 
-os.makedirs(AUDIO_DIR, exist_ok=True)
-os.makedirs(TEMP_DIR, exist_ok=True)
+AUDIO_DIR.mkdir(parents=True, exist_ok=True)
+TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
-# Language mapping for gTTS
+# Language mapping
 LANGUAGE_MAP = {
     'en': 'en',
     'hi': 'hi', 
@@ -50,8 +52,8 @@ def root():
         "version": "1.0.0",
         "endpoints": {
             "health": "GET /health",
-            "tts": "POST /api/v1/tts",
-            "stt": "POST /api/v1/stt",
+            "tts": "POST /tts",
+            "stt": "POST /stt",
             "audio": "GET /static/audio/<filename>"
         }
     }), 200
@@ -70,7 +72,7 @@ def health_check():
         }
     }), 200
 
-@app.route('/api/v1/tts', methods=['POST', 'OPTIONS'])
+@app.route('/tts', methods=['POST', 'OPTIONS'])
 def text_to_speech():
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
@@ -87,16 +89,8 @@ def text_to_speech():
         print(f"   Method: {request.method}")
         print("=" * 60)
         
-        # Get JSON data - be flexible with content type
-        data = None
-        if request.is_json:
-            data = request.get_json()
-        elif request.data:
-            import json
-            try:
-                data = json.loads(request.data.decode('utf-8'))
-            except:
-                pass
+        # Get JSON data
+        data = request.get_json(force=True)
         
         if not data:
             print("❌ No JSON data received")
@@ -122,19 +116,19 @@ def text_to_speech():
         # Generate unique filename
         file_id = str(uuid.uuid4())[:8]
         filename = f"speech_{file_id}.mp3"
-        file_path = os.path.join(AUDIO_DIR, filename)
+        file_path = AUDIO_DIR / filename
         
         print(f"💾 Generating: {filename}")
         
         # Generate speech using gTTS
         tts = gTTS(text=text, lang=LANGUAGE_MAP[language], slow=False)
-        tts.save(file_path)
+        tts.save(str(file_path))
         
         # Verify file creation
-        if not os.path.exists(file_path):
+        if not file_path.exists():
             raise Exception("Audio file was not created")
         
-        file_size = os.path.getsize(file_path)
+        file_size = file_path.stat().st_size
         duration_estimate = len(text) * 0.1  # Rough estimate
         
         # Generate audio URL
@@ -163,7 +157,7 @@ def text_to_speech():
         print("=" * 60 + "\n")
         return jsonify({"error": f"TTS generation failed: {str(e)}"}), 500
 
-@app.route('/api/v1/stt', methods=['POST', 'OPTIONS'])
+@app.route('/stt', methods=['POST', 'OPTIONS'])
 def speech_to_text():
     # Handle preflight OPTIONS request
     if request.method == 'OPTIONS':
@@ -197,32 +191,31 @@ def speech_to_text():
         
         # Save uploaded file temporarily
         file_id = str(uuid.uuid4())[:8]
-        original_ext = os.path.splitext(audio_file.filename)[1]
+        original_ext = Path(audio_file.filename).suffix
         temp_filename = f"temp_{file_id}{original_ext}"
-        temp_path = os.path.join(TEMP_DIR, temp_filename)
+        temp_path = TEMP_DIR / temp_filename
         
-        audio_file.save(temp_path)
+        audio_file.save(str(temp_path))
         print(f"💾 Saved to: {temp_path}")
         
-        # Convert to WAV if needed (speech_recognition requires WAV)
-        if not temp_path.endswith('.wav'):
+        # Convert to WAV if needed
+        if not str(temp_path).endswith('.wav'):
             try:
                 from pydub import AudioSegment
-                audio = AudioSegment.from_file(temp_path)
-                wav_path = temp_path.rsplit('.', 1)[0] + '.wav'
-                audio.export(wav_path, format='wav')
+                audio = AudioSegment.from_file(str(temp_path))
+                wav_path = temp_path.with_suffix('.wav')
+                audio.export(str(wav_path), format='wav')
                 
                 # Clean up original file
-                if os.path.exists(temp_path):
-                    os.remove(temp_path)
+                if temp_path.exists():
+                    temp_path.unlink()
                 temp_path = wav_path
                 print(f"🔄 Converted to WAV: {wav_path}")
             except Exception as conv_error:
                 print(f"⚠️ Conversion warning: {conv_error}")
-                print("   Attempting to use file as-is...")
         
         # Transcribe using speech_recognition
-        with sr.AudioFile(temp_path) as source:
+        with sr.AudioFile(str(temp_path)) as source:
             print("🔍 Processing audio...")
             recognizer.adjust_for_ambient_noise(source, duration=0.5)
             audio_data = recognizer.record(source)
@@ -264,9 +257,9 @@ def speech_to_text():
         
     finally:
         # Clean up temp file
-        if temp_path and os.path.exists(temp_path):
+        if temp_path and Path(temp_path).exists():
             try:
-                os.remove(temp_path)
+                Path(temp_path).unlink()
                 print(f"🗑️ Cleaned up: {temp_path}")
             except Exception as cleanup_error:
                 print(f"⚠️ Cleanup error: {cleanup_error}")
@@ -274,19 +267,18 @@ def speech_to_text():
 @app.route('/static/audio/<filename>')
 def serve_audio(filename):
     try:
-        file_path = os.path.join(AUDIO_DIR, filename)
+        file_path = AUDIO_DIR / filename
         print(f"📂 Serving: {filename}")
         
-        if not os.path.exists(file_path):
+        if not file_path.exists():
             print(f"❌ File not found: {file_path}")
             return jsonify({"error": "Audio file not found"}), 404
         
-        return send_file(file_path, mimetype='audio/mpeg')
+        return send_file(str(file_path), mimetype='audio/mpeg')
     except Exception as e:
         print(f"❌ Error serving file: {e}")
         return jsonify({"error": "File serving error"}), 500
 
-# Error handlers
 @app.errorhandler(404)
 def not_found(e):
     return jsonify({
@@ -296,8 +288,8 @@ def not_found(e):
         "available_endpoints": [
             "GET /",
             "GET /health",
-            "POST /api/v1/tts",
-            "POST /api/v1/stt",
+            "POST /tts",
+            "POST /stt",
             "GET /static/audio/<filename>"
         ]
     }), 404
@@ -315,20 +307,21 @@ if __name__ == '__main__':
     print("=" * 60)
     print(f"🌐 Server: http://localhost:8000")
     print(f"🏥 Health: http://localhost:8000/health")
-    print(f"🔊 TTS: POST http://localhost:8000/api/v1/tts")
-    print(f"🎙️ STT: POST http://localhost:8000/api/v1/stt")
+    print(f"🔊 TTS: POST http://localhost:8000/tts")
+    print(f"🎙️ STT: POST http://localhost:8000/stt")
     print("=" * 60)
     
-    # Print all registered routes for debugging
+    # Print all registered routes
     print("\n📋 Registered Routes:")
     for rule in app.url_map.iter_rules():
-        print(f"   {rule.methods} {rule.rule}")
+        methods = ','.join(rule.methods - {'HEAD', 'OPTIONS'})
+        print(f"   [{methods}] {rule.rule}")
     
     print("\n" + "=" * 60)
     print("📝 Press CTRL+C to stop")
     print("=" * 60 + "\n")
     
-    # Run with threaded mode for better concurrency
+    # Run server
     app.run(
         host='0.0.0.0',
         port=8000,
