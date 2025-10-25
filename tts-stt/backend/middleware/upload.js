@@ -1,19 +1,30 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '..', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('📁 Created uploads directory:', uploadsDir);
+}
 
 // Storage configuration
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'audio-' + uniqueSuffix + path.extname(file.originalname));
+    const fileName = 'audio-' + uniqueSuffix + path.extname(file.originalname);
+    console.log('💾 Saving file as:', fileName);
+    cb(null, fileName);
   }
 });
 
 // File filter
 const fileFilter = (req, file, cb) => {
+  console.log('🔍 Checking file type:', file.mimetype);
   const allowedTypes = [
     'audio/webm',
     'audio/wav', 
@@ -26,6 +37,7 @@ const fileFilter = (req, file, cb) => {
   if (allowedTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
+    console.error('❌ Invalid file type:', file.mimetype);
     cb(new Error('Invalid file type. Only audio files are allowed.'), false);
   }
 };

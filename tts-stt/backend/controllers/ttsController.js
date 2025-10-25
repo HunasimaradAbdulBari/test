@@ -6,7 +6,9 @@ const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8000';
 const generateSpeech = async (req, res, next) => {
   try {
     const { text, language = 'en', speed = 1.0, pitch = 1.0 } = req.body;
-
+    
+    console.log('🔊 [Backend] TTS Request:', { text: text?.substring(0, 50) + '...', language });
+    
     if (!text || text.trim().length === 0) {
       return res.status(400).json(
         APIResponse.error('Text is required')
@@ -19,9 +21,9 @@ const generateSpeech = async (req, res, next) => {
       );
     }
 
-    console.log(`🔊 Generating speech: ${text.substring(0, 50)}..., Language: ${language}`);
-
-    // Forward to Python FastAPI
+    console.log(`🔗 Forwarding to Python API: ${PYTHON_API_URL}/api/v1/tts`);
+    
+    // Forward to Python Flask API
     const response = await axios.post(
       `${PYTHON_API_URL}/api/v1/tts`,
       {
@@ -38,32 +40,28 @@ const generateSpeech = async (req, res, next) => {
       }
     );
 
+    console.log('✅ [Backend] Python response received:', response.data);
+    
     const { audio_url, metadata } = response.data;
-
     res.json(APIResponse.ttsSuccess(audio_url, language, text, metadata));
-
+    
   } catch (error) {
-    console.error('TTS Controller Error:', error.message);
-
-    if (error.response) {
-      return res.status(error.response.status).json(
-        APIResponse.error(
-          error.response.data.detail || 'Speech generation service error',
-          error.response.data
-        )
-      );
-    }
-
+    console.error('❌ [Backend] TTS Error:', error.message);
+    
     if (error.code === 'ECONNREFUSED') {
       return res.status(503).json(
-        APIResponse.error('Speech service unavailable')
+        APIResponse.error('Speech service unavailable. Please ensure Python service is running on port 8000.')
       );
     }
-
-    next(error);
+    
+    if (error.response) {
+      return res.status(error.response.status).json(
+        APIResponse.error(error.response.data?.error || 'Python service error')
+      );
+    }
+    
+    res.status(500).json(APIResponse.error('Internal server error'));
   }
 };
 
-module.exports = {
-  generateSpeech
-};
+module.exports = { generateSpeech };
