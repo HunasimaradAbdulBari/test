@@ -11,29 +11,48 @@ const transcribeAudio = async (req, res, next) => {
   try {
     const { language = 'en' } = req.body;
     
+    console.log('🎙️ [Backend] STT Request received');
+    console.log('📋 Body:', req.body);
+    console.log('📋 File present:', !!req.file);
+    
     if (!req.file) {
+      console.error('❌ No file in request');
       return res.status(400).json(
         APIResponse.error('No audio file provided')
       );
     }
 
     tempFilePath = req.file.path;
-    console.log(`🎙️ [Backend] STT Request:`, {
+    console.log(`📁 File info:`, {
       filename: req.file.filename,
-      language,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
       path: tempFilePath,
-      size: req.file.size
+      language: language
     });
+
+    // Verify file exists
+    if (!fs.existsSync(tempFilePath)) {
+      throw new Error('Uploaded file not found');
+    }
 
     // Create form data for Python API
     const formData = new FormData();
-    formData.append('audio', fs.createReadStream(tempFilePath), {
-      filename: req.file.filename,
-      contentType: req.file.mimetype
+    
+    // IMPORTANT: Create a read stream from the file
+    const fileStream = fs.createReadStream(tempFilePath);
+    
+    // Append with proper options
+    formData.append('audio', fileStream, {
+      filename: req.file.originalname || 'recording.webm',
+      contentType: req.file.mimetype || 'audio/webm',
+      knownLength: req.file.size
     });
+    
     formData.append('language', language);
 
-    console.log(`🔗 Forwarding to Python API: ${PYTHON_API_URL}/stt`);
+    console.log(`🔗 Forwarding to: ${PYTHON_API_URL}/stt`);
+    console.log(`📦 FormData headers:`, formData.getHeaders());
 
     // Forward to Python Flask API
     const response = await axios.post(
@@ -43,7 +62,9 @@ const transcribeAudio = async (req, res, next) => {
         headers: {
           ...formData.getHeaders(),
         },
-        timeout: 30000, // 30 seconds
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+        timeout: 60000, // 60 seconds for STT
       }
     );
 
@@ -55,19 +76,21 @@ const transcribeAudio = async (req, res, next) => {
   } catch (error) {
     console.error('❌ [Backend] STT Error:', error.message);
     
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+      return res.status(error.response.status).json(
+        APIResponse.error(error.response.data?.error || 'Python service error')
+      );
+    }
+    
     if (error.code === 'ECONNREFUSED') {
       return res.status(503).json(
         APIResponse.error('Speech service unavailable. Please ensure Python service is running on port 8000.')
       );
     }
     
-    if (error.response) {
-      return res.status(error.response.status).json(
-        APIResponse.error(error.response.data?.error || 'Python service error')
-      );
-    }
-    
-    res.status(500).json(APIResponse.error('Internal server error'));
+    res.status(500).json(APIResponse.error('Internal server error: ' + error.message));
     
   } finally {
     // Clean up uploaded file
