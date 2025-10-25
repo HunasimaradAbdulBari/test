@@ -33,11 +33,11 @@ const transcribeAudio = async (req, res, next) => {
     });
     formData.append('language', language);
 
-    console.log(`🔗 Forwarding to Python API: ${PYTHON_API_URL}/api/v1/stt`);
+    console.log(`🔗 Forwarding to Python API: ${PYTHON_API_URL}/stt`);
 
     // Forward to Python Flask API
     const response = await axios.post(
-      `${PYTHON_API_URL}/api/v1/stt`,
+      `${PYTHON_API_URL}/stt`,
       formData,
       {
         headers: {

@@ -21,11 +21,12 @@ const generateSpeech = async (req, res, next) => {
       );
     }
 
-    console.log(`🔗 Forwarding to Python API: ${PYTHON_API_URL}/api/v1/tts`);
+    // FIXED: Use /tts instead of /api/v1/tts
+    console.log(`🔗 Forwarding to Python API: ${PYTHON_API_URL}/tts`);
     
     // Forward to Python Flask API
     const response = await axios.post(
-      `${PYTHON_API_URL}/api/v1/tts`,
+      `${PYTHON_API_URL}/tts`,  // ← Changed from /api/v1/tts
       {
         text,
         language,
@@ -42,8 +43,16 @@ const generateSpeech = async (req, res, next) => {
 
     console.log('✅ [Backend] Python response received:', response.data);
     
-    const { audio_url, metadata } = response.data;
-    res.json(APIResponse.ttsSuccess(audio_url, language, text, metadata));
+    // Get audio_url from response and prepend Python API URL
+    const audio_url = response.data.audio_url;
+    const full_audio_url = audio_url.startsWith('http') 
+      ? audio_url 
+      : `${PYTHON_API_URL}${audio_url}`;
+    
+    res.json(APIResponse.ttsSuccess(full_audio_url, language, text, {
+      method: 'flask-gtts',
+      text_length: text.length
+    }));
     
   } catch (error) {
     console.error('❌ [Backend] TTS Error:', error.message);
