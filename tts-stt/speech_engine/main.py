@@ -303,7 +303,7 @@ def speech_to_text():
             "error": f"STT processing failed: {str(e)}",
             "type": type(e).__name__
         }), 500
-        
+    
     finally:
         # Clean up temp file
         if temp_path and Path(temp_path).exists():
