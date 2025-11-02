@@ -66,6 +66,24 @@
 
 
 # Flask Framework
+# Flask==3.0.0
+# flask-cors==4.0.0
+# Werkzeug==3.0.1
+
+# # Speech Processing
+# gTTS==2.5.4
+# SpeechRecognition==3.10.0
+
+# # Audio Processing
+# pydub==0.25.1
+
+# # HTTP Client
+# requests==2.32.3
+
+# # Utilities
+# python-dotenv==1.0.0
+
+# Flask Framework
 Flask==3.0.0
 flask-cors==4.0.0
 Werkzeug==3.0.1
@@ -73,12 +91,30 @@ Werkzeug==3.0.1
 # Speech Processing
 gTTS==2.5.4
 SpeechRecognition==3.10.0
+openai-whisper==20231117
+
+# Language Detection
+langdetect==1.0.9
+langid==1.1.6
+polyglot==16.7.4
+textblob==0.17.1
+pycld2==0.41
 
 # Audio Processing
 pydub==0.25.1
+ffmpeg-python==0.2.0
 
 # HTTP Client
 requests==2.32.3
 
 # Utilities
 python-dotenv==1.0.0
+
+# NLP for better language detection
+nltk==3.8.1
+spacy==3.7.2
+
+
+torch>=2.0.0
+torchaudio>=2.0.0
+numpy>=1.20.0
