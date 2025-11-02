@@ -9,9 +9,7 @@ const transcribeAudio = async (req, res, next) => {
   let tempFilePath = null;
   
   try {
-    const { language = 'en' } = req.body;
-    
-    console.log('🎙️ [Backend] STT Request received');
+    console.log('🎙️ [Backend STT] Request with AUTO-DETECTION');
     
     if (!req.file) {
       console.error('❌ No file in request');
@@ -26,26 +24,26 @@ const transcribeAudio = async (req, res, next) => {
       originalname: req.file.originalname,
       mimetype: req.file.mimetype,
       size: req.file.size,
-      path: tempFilePath,
-      language: language
+      path: tempFilePath
     });
+    console.log('   (Language will be auto-detected)');
 
     // Verify file exists
     if (!fs.existsSync(tempFilePath)) {
       throw new Error('Uploaded file not found');
     }
 
-    // CRITICAL FIX: Read file completely before sending
+    // Read file completely before sending
     const fileBuffer = fs.readFileSync(tempFilePath);
     console.log(`📦 File buffer size: ${fileBuffer.length} bytes`);
 
-    // Create form data with buffer instead of stream
+    // Create form data - NO LANGUAGE PARAMETER
     const formData = new FormData();
     formData.append('audio', fileBuffer, {
       filename: 'recording.webm',
       contentType: 'audio/webm',
     });
-    formData.append('language', language);
+    // Language parameter removed - auto-detection
 
     console.log(`🔗 Forwarding to: ${PYTHON_API_URL}/stt`);
 
@@ -61,13 +59,32 @@ const transcribeAudio = async (req, res, next) => {
       }
     );
 
-    console.log('✅ [Backend] Python STT response:', response.data);
+    console.log('✅ [Backend STT] Python response received');
+    console.log(`   Detected: ${response.data.detected_language?.name || 'Unknown'}`);
+    console.log(`   Text: ${response.data.text}`);
 
-    const { text, confidence, duration } = response.data;
-    res.json(APIResponse.sttSuccess(text, language, confidence, duration));
+    const { text, detected_language, metadata } = response.data;
+    
+    // Return comprehensive response
+    res.json({
+      success: true,
+      message: 'Transcription completed with auto-detected language',
+      data: {
+        text,
+        transcription: text,
+        detected_language,
+        confidence: metadata?.confidence || detected_language?.confidence,
+        duration: metadata?.duration,
+        metadata: {
+          ...metadata,
+          auto_detected: true
+        }
+      },
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
-    console.error('❌ [Backend] STT Error:', error.message);
+    console.error('❌ [Backend STT] Error:', error.message);
     
     if (error.response) {
       console.error('Response status:', error.response.status);

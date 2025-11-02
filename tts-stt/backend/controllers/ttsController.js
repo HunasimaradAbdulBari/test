@@ -1,4 +1,3 @@
-// tts-stt/backend/controllers/ttsController.js
 const axios = require('axios');
 const APIResponse = require('../models/responseModel');
 
@@ -6,13 +5,11 @@ const PYTHON_API_URL = process.env.PYTHON_API_URL || 'http://localhost:8000';
 
 const generateSpeech = async (req, res, next) => {
   try {
-    const { text, language = 'en', speed = 1.0, pitch = 1.0 } = req.body;
+    const { text, speed = 1.0, pitch = 1.0 } = req.body;
     
-    console.log('🔊 [Backend TTS] Request:', { 
-      textLength: text?.length, 
-      language,
-      pythonUrl: PYTHON_API_URL 
-    });
+    console.log('🔊 [Backend TTS] Request with AUTO-DETECTION');
+    console.log(`   Text length: ${text?.length} characters`);
+    console.log(`   Python URL: ${PYTHON_API_URL}`);
     
     if (!text || text.trim().length === 0) {
       return res.status(400).json(
@@ -27,41 +24,43 @@ const generateSpeech = async (req, res, next) => {
     }
 
     console.log(`🔗 Calling Python API: ${PYTHON_API_URL}/tts`);
+    console.log(`   (Language will be auto-detected)`);
     
-    // Forward to Python Flask API
+    // Forward to Python Flask API - NO LANGUAGE PARAMETER
     const response = await axios.post(
       `${PYTHON_API_URL}/tts`,
-      { text, language, speed, pitch },
+      { text, speed, pitch },  // Language removed - auto-detection
       {
         headers: { 'Content-Type': 'application/json' },
         timeout: 30000,
       }
     );
 
-    console.log('✅ [Backend TTS] Python response:', response.data);
+    console.log('✅ [Backend TTS] Python response received');
+    console.log(`   Detected: ${response.data.detected_language?.name || 'Unknown'}`);
     
-    // CRITICAL FIX: Ensure audio_url is properly formatted
     const pythonAudioUrl = response.data.audio_url;
     
-    // If the URL is relative, prepend the Python API URL
+    // Build full audio URL
     const fullAudioUrl = pythonAudioUrl.startsWith('http') 
       ? pythonAudioUrl 
       : `${PYTHON_API_URL}${pythonAudioUrl}`;
     
     console.log('🎵 Final audio URL:', fullAudioUrl);
     
-    // Return response with all possible key names for compatibility
+    // Return comprehensive response
     res.json({
       success: true,
-      message: 'Audio generated successfully',
+      message: 'Audio generated successfully with auto-detected language',
       data: {
         audio_url: fullAudioUrl,
         audioUrl: fullAudioUrl,
         url: fullAudioUrl,
-        language,
+        detected_language: response.data.detected_language,
         text: text.substring(0, 100),
         metadata: {
           method: 'flask-gtts',
+          auto_detected: true,
           text_length: text.length,
           ...(response.data.metadata || {})
         }
