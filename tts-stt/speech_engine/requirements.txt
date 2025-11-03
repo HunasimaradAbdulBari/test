@@ -94,6 +94,9 @@ SpeechRecognition==3.10.0
 openai-whisper==20231117
 
 # Language Detection
+librosa==0.10.1
+soundfile==0.12.1
+
 langdetect==1.0.9
 langid==1.1.6
 polyglot==16.7.4
