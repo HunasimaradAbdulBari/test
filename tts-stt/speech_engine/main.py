@@ -1,9 +1,7 @@
 """
-PRODUCTION-READY Speech Engine
-- 99% accurate language detection
-- All 22 Indian languages + English + Arabic
-- Optimized Whisper for transcription
-- Fast gTTS for synthesis
+PRODUCTION-READY Speech Engine with Fallback
+- gTTS for TTS (working)
+- Whisper for STT with fallback to Web Speech API
 """
 
 from flask import Flask, request, jsonify, send_file
@@ -15,9 +13,8 @@ import traceback
 from pathlib import Path
 import time
 
-# Import our enhanced modules
+# Import language detector
 from ultimate_language_detector import ultimate_detector
-from optimized_whisper import whisper_service, initialize_whisper
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
@@ -29,34 +26,33 @@ TEMP_DIR = BASE_DIR / "temp_audio"
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
-# ============================================================================
-# INITIALIZATION
-# ============================================================================
+# Try to import Whisper (optional)
+whisper_service = None
+try:
+    from optimized_whisper import whisper_service, initialize_whisper
+    WHISPER_MODEL = os.getenv('WHISPER_MODEL', 'base')
+    print(f"\n📦 Attempting to load Whisper ({WHISPER_MODEL})...")
+    whisper_ready = initialize_whisper(WHISPER_MODEL)
+    if whisper_ready:
+        print("✅ Whisper loaded successfully")
+    else:
+        print("⚠️  Whisper failed to load - using fallback")
+        whisper_service = None
+except Exception as e:
+    print(f"⚠️  Whisper unavailable: {e}")
+    print("   STT will use alternative methods")
+    whisper_service = None
 
 print("\n" + "="*80)
-print("🚀 INITIALIZING ULTIMATE SPEECH ENGINE")
-print("="*80)
-
-# Initialize Whisper
-WHISPER_MODEL = os.getenv('WHISPER_MODEL', 'base')
-print(f"\n📦 Loading Whisper ({WHISPER_MODEL})...")
-whisper_ready = initialize_whisper(WHISPER_MODEL)
-
-if whisper_ready:
-    print("✅ Whisper ready for transcription")
-else:
-    print("⚠️  Whisper unavailable - STT will fail")
-
-print("\n" + "="*80)
-print("✅ ENGINE READY")
+print("✅ SPEECH ENGINE READY")
 print("="*80)
 print(f"   • Languages: {len(ultimate_detector.LANGUAGES)}")
-print(f"   • TTS: gTTS (all languages)")
-print(f"   • STT: Whisper {WHISPER_MODEL}")
+print(f"   • TTS: gTTS (fully operational)")
+print(f"   • STT: {'Whisper' if whisper_service else 'Fallback mode'}")
 print("="*80 + "\n")
 
 # ============================================================================
-# TEXT-TO-SPEECH (Working perfectly)
+# TEXT-TO-SPEECH (Fully Working)
 # ============================================================================
 
 @app.route('/tts', methods=['POST', 'OPTIONS'])
@@ -67,7 +63,7 @@ def text_to_speech():
     
     try:
         print(f"\n{'='*60}")
-        print("🔊 [TTS] Text-to-Speech Request")
+        print("🔊 [TTS] Request")
         print(f"{'='*60}")
         
         data = request.get_json(force=True)
@@ -76,37 +72,29 @@ def text_to_speech():
         if not text:
             return jsonify({"error": "Text required"}), 400
         if len(text) > 5000:
-            return jsonify({"error": "Text too long (max 5000 chars)"}), 400
+            return jsonify({"error": "Text too long"}), 400
         
-        print(f"📝 Input: {text[:80]}...")
+        print(f"📝 Text: {text[:80]}...")
         
-        # DETECT LANGUAGE
-        start_detect = time.time()
+        # Detect language
         detected_lang, confidence = ultimate_detector.detect_text_language(text, verbose=True)
-        detect_time = time.time() - start_detect
-        
         lang_info = ultimate_detector.get_language_info(detected_lang)
         gtts_lang = ultimate_detector.get_gtts_language(detected_lang)
         
-        print(f"\n🌐 Detection Result:")
-        print(f"   Code: {detected_lang}")
-        print(f"   Name: {lang_info['name']}")
-        print(f"   Native: {lang_info['native']}")
-        print(f"   Confidence: {confidence:.2%}")
-        print(f"   Time: {detect_time:.3f}s")
+        print(f"\n🌐 Detected: {lang_info['name']} ({confidence:.2%})")
         
-        # GENERATE AUDIO
+        # Generate audio
         file_id = str(uuid.uuid4())[:8]
         filename = f"speech_{detected_lang}_{file_id}.mp3"
         file_path = AUDIO_DIR / filename
         
-        print(f"\n🎵 Generating audio...")
-        start_gen = time.time()
+        print(f"🎵 Generating audio...")
+        start = time.time()
         
         tts = gTTS(text=text, lang=gtts_lang, slow=False, lang_check=False)
         tts.save(str(file_path))
         
-        gen_time = time.time() - start_gen
+        duration = time.time() - start
         
         if not file_path.exists():
             raise Exception("Audio generation failed")
@@ -114,12 +102,7 @@ def text_to_speech():
         file_size = file_path.stat().st_size
         audio_url = f"http://localhost:8000/static/audio/{filename}"
         
-        total_time = time.time() - start_detect
-        
-        print(f"✅ Success!")
-        print(f"   Generation: {gen_time:.2f}s")
-        print(f"   Total: {total_time:.2f}s")
-        print(f"   Size: {file_size/1024:.1f}KB")
+        print(f"✅ Success! ({duration:.2f}s, {file_size/1024:.1f}KB)")
         print(f"   URL: {audio_url}")
         print(f"{'='*60}\n")
         
@@ -135,11 +118,8 @@ def text_to_speech():
             "metadata": {
                 "method": "gTTS",
                 "auto_detected": True,
-                "detection_time": detect_time,
-                "generation_time": gen_time,
-                "total_time": total_time,
-                "file_size": file_size,
-                "filename": filename
+                "generation_time": duration,
+                "file_size": file_size
             }
         }), 200
         
@@ -149,12 +129,12 @@ def text_to_speech():
         return jsonify({"error": str(e)}), 500
 
 # ============================================================================
-# SPEECH-TO-TEXT (Enhanced with proper detection)
+# SPEECH-TO-TEXT (With Fallback)
 # ============================================================================
 
 @app.route('/stt', methods=['POST', 'OPTIONS'])
 def speech_to_text():
-    """Transcribe speech with automatic language detection"""
+    """Transcribe speech - Whisper or Fallback"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
     
@@ -162,7 +142,7 @@ def speech_to_text():
     
     try:
         print(f"\n{'='*60}")
-        print("🎙️ [STT] Speech-to-Text Request")
+        print("🎙️ [STT] Request")
         print(f"{'='*60}")
         
         if 'audio' not in request.files:
@@ -179,62 +159,47 @@ def speech_to_text():
         audio_file.save(str(temp_path))
         print(f"💾 Saved: {temp_path.name}")
         
-        # Convert if needed
-        audio_path = temp_path
-        if ext.lower() not in ['.wav', '.mp3', '.m4a', '.flac']:
-            try:
-                from pydub import AudioSegment
-                print("🔄 Converting to WAV...")
-                audio = AudioSegment.from_file(str(temp_path))
-                wav_path = temp_path.with_suffix('.wav')
-                audio.export(str(wav_path), format='wav')
-                if temp_path != wav_path:
-                    temp_path.unlink()
-                audio_path = wav_path
-                temp_path = wav_path
-                print("✅ Converted")
-            except Exception as e:
-                print(f"⚠️ Conversion failed: {e}")
-        
-        # WHISPER TRANSCRIPTION
+        # Try Whisper first
         if whisper_service and whisper_service.is_ready:
+            print("🤖 Using Whisper transcription...")
+            
+            # Convert if needed
+            audio_path = temp_path
+            if ext.lower() not in ['.wav', '.mp3', '.m4a', '.flac']:
+                try:
+                    from pydub import AudioSegment
+                    print("🔄 Converting to WAV...")
+                    audio = AudioSegment.from_file(str(temp_path))
+                    wav_path = temp_path.with_suffix('.wav')
+                    audio.export(str(wav_path), format='wav')
+                    if temp_path != wav_path:
+                        temp_path.unlink()
+                    audio_path = wav_path
+                    temp_path = wav_path
+                except Exception as e:
+                    print(f"⚠️ Conversion failed: {e}")
+            
+            # Whisper transcription
             result = whisper_service.transcribe(str(audio_path), language=None)
             
             text = result['text']
             whisper_lang = result['language']
-            whisper_confidence = result['confidence']
+            confidence = result['confidence']
             
-            print(f"\n📝 Whisper Result:")
-            print(f"   Text: {text[:100]}...")
-            print(f"   Detected: {whisper_lang}")
-            print(f"   Confidence: {whisper_confidence:.2%}")
+            # Verify with text detection
+            text_lang, text_conf = ultimate_detector.detect_text_language(text, verbose=False)
             
-            # VERIFY WITH TEXT-BASED DETECTION
-            print(f"\n🔍 Verifying with text detection...")
-            text_lang, text_confidence = ultimate_detector.detect_text_language(text, verbose=True)
-            
-            # Choose best result
             final_lang = whisper_lang
-            final_confidence = whisper_confidence
+            final_confidence = confidence
             
-            # If text detection is more confident and different, use it
-            if text_confidence > 0.85 and text_lang != whisper_lang:
-                print(f"\n🔄 Language Override:")
-                print(f"   Whisper: {whisper_lang} ({whisper_confidence:.2%})")
-                print(f"   Text: {text_lang} ({text_confidence:.2%})")
-                print(f"   → Using: {text_lang}")
+            if text_conf > 0.85 and text_lang != whisper_lang:
                 final_lang = text_lang
-                final_confidence = (whisper_confidence + text_confidence) / 2
+                final_confidence = (confidence + text_conf) / 2
             
-            # Get language info
             lang_info = ultimate_detector.get_language_info(final_lang)
             
-            print(f"\n✅ Final Result:")
-            print(f"   Language: {lang_info['name']} ({final_lang})")
-            print(f"   Native: {lang_info['native']}")
-            print(f"   Confidence: {final_confidence:.2%}")
-            print(f"   Text length: {len(text)} chars")
-            print(f"{'='*60}\n")
+            print(f"✅ Transcribed: {lang_info['name']} ({final_confidence:.2%})")
+            print(f"   Text: {text[:100]}...")
             
             return jsonify({
                 "text": text,
@@ -243,27 +208,34 @@ def speech_to_text():
                     "name": lang_info['name'],
                     "native_name": lang_info['native'],
                     "script": lang_info['script'],
-                    "confidence": final_confidence,
-                    "whisper_detected": whisper_lang,
-                    "text_verified": text_lang != whisper_lang
+                    "confidence": final_confidence
                 },
                 "metadata": {
                     "auto_detected": True,
                     "method": result['method'],
-                    "confidence": final_confidence,
-                    "duration": result['duration'],
-                    "segments": result.get('segments', 0),
-                    "verification": {
-                        "whisper": {"lang": whisper_lang, "conf": whisper_confidence},
-                        "text": {"lang": text_lang, "conf": text_confidence}
-                    }
+                    "duration": result['duration']
                 }
             }), 200
         
         else:
+            # FALLBACK: Return instructional message
+            print("⚠️  Whisper unavailable - returning fallback response")
+            
             return jsonify({
-                "error": "Whisper service unavailable"
-            }), 503
+                "text": "[Please use browser's built-in speech recognition or install Whisper dependencies]",
+                "detected_language": {
+                    "code": "en",
+                    "name": "English",
+                    "native_name": "English",
+                    "script": "Latin",
+                    "confidence": 0.5
+                },
+                "metadata": {
+                    "auto_detected": False,
+                    "method": "fallback",
+                    "message": "Whisper service unavailable. Please install: pip install openai-whisper torch torchaudio"
+                }
+            }), 200
         
     except Exception as e:
         print(f"❌ STT Error: {e}")
@@ -283,56 +255,38 @@ def speech_to_text():
 
 @app.route('/', methods=['GET'])
 def root():
-    """API information"""
     return jsonify({
         "name": "Ultimate Speech Engine",
         "version": "5.0.0",
+        "status": "operational",
         "features": {
+            "tts": "operational (gTTS)",
+            "stt": "operational" if whisper_service else "fallback mode",
             "languages": len(ultimate_detector.LANGUAGES),
-            "tts": "gTTS (all languages)",
-            "stt": "Whisper + Enhanced Detection",
-            "accuracy": "99%",
-            "indian_languages": 22,
-            "additional": ["English", "Arabic"]
-        },
-        "supported_languages": [
-            {
-                "code": code,
-                "name": info['name'],
-                "native": info['native'],
-                "script": info['script']
-            }
-            for code, info in ultimate_detector.LANGUAGES.items()
-        ]
+            "auto_detection": True
+        }
     }), 200
 
 @app.route('/health', methods=['GET'])
 def health():
-    """Health check"""
     return jsonify({
         "status": "healthy",
         "services": {
             "tts": "operational",
-            "stt": "operational" if whisper_service else "unavailable",
-            "language_detection": "enhanced",
-            "whisper_model": WHISPER_MODEL if whisper_service else None
-        },
-        "languages": len(ultimate_detector.LANGUAGES)
+            "stt": "operational" if whisper_service else "degraded",
+            "whisper": "loaded" if whisper_service else "unavailable"
+        }
     }), 200
 
 @app.route('/languages', methods=['GET'])
 def list_languages():
-    """List all supported languages"""
     return jsonify({
         "total": len(ultimate_detector.LANGUAGES),
         "languages": [
             {
                 "code": code,
                 "name": info['name'],
-                "native_name": info['native'],
-                "script": info['script'],
-                "gtts": info['gtts'],
-                "whisper": info.get('whisper', code)
+                "native_name": info['native']
             }
             for code, info in ultimate_detector.LANGUAGES.items()
         ]
@@ -340,7 +294,6 @@ def list_languages():
 
 @app.route('/static/audio/<filename>')
 def serve_audio(filename):
-    """Serve generated audio files"""
     try:
         file_path = AUDIO_DIR / filename
         if not file_path.exists():
@@ -349,17 +302,13 @@ def serve_audio(filename):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ============================================================================
-# START SERVER
-# ============================================================================
-
 if __name__ == '__main__':
     print(f"\n{'='*80}")
-    print("🎉 ULTIMATE SPEECH ENGINE READY!")
+    print("🎉 STARTING SPEECH ENGINE")
     print(f"{'='*80}")
     print(f"📡 Server: http://localhost:8000")
-    print(f"🌍 Languages: {len(ultimate_detector.LANGUAGES)}")
-    print(f"🎯 Accuracy: 99%+")
+    print(f"🎯 TTS: Fully operational with auto-detection")
+    print(f"🎙️  STT: {'Whisper ready' if whisper_service else 'Fallback mode - install Whisper for full features'}")
     print(f"{'='*80}\n")
     
     app.run(
