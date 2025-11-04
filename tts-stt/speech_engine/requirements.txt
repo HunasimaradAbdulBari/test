@@ -116,6 +116,7 @@ python-dotenv==1.0.0
 # NLP for better language detection
 nltk==3.8.1
 spacy==3.7.2
+scipy>=1.11.0
 indic-nlp-library==0.92
 indicnlp==0.1
 

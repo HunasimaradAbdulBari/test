@@ -1,0 +1,2 @@
+Requirement already satisfied: scipy in c:\tts-stt\speech_engine\env\lib\site-packages (1.16.3)
+Requirement already satisfied: numpy<2.6,>=1.25.2 in c:\tts-stt\speech_engine\env\lib\site-packages (from scipy) (2.3.4)
