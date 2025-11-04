@@ -1,7 +1,6 @@
 """
-PRODUCTION-READY Speech Engine with Fallback
-- gTTS for TTS (working)
-- Whisper for STT with fallback to Web Speech API
+FIXED: main.py - Production Speech Engine
+Replace content of: tts-stt/speech_engine/main.py
 """
 
 from flask import Flask, request, jsonify, send_file
@@ -26,29 +25,114 @@ TEMP_DIR = BASE_DIR / "temp_audio"
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
-# Try to import Whisper (optional)
+# Whisper initialization - with PROPER error handling
 whisper_service = None
+WHISPER_AVAILABLE = False
+
+print("\n" + "="*80)
+print("🚀 INITIALIZING SPEECH ENGINE")
+print("="*80)
+
+# Try to import and initialize Whisper
 try:
-    from optimized_whisper import whisper_service, initialize_whisper
-    WHISPER_MODEL = os.getenv('WHISPER_MODEL', 'base')
-    print(f"\n📦 Attempting to load Whisper ({WHISPER_MODEL})...")
-    whisper_ready = initialize_whisper(WHISPER_MODEL)
-    if whisper_ready:
-        print("✅ Whisper loaded successfully")
-    else:
-        print("⚠️  Whisper failed to load - using fallback")
-        whisper_service = None
+    print("\n1️⃣ Checking PyTorch...")
+    import torch
+    print(f"   ✅ PyTorch {torch.__version__}")
+    print(f"   Device: {'CUDA' if torch.cuda.is_available() else 'CPU'}")
+    
+    print("\n2️⃣ Checking Whisper...")
+    import whisper
+    print(f"   ✅ Whisper available")
+    
+    print("\n3️⃣ Loading Whisper model...")
+    WHISPER_MODEL = os.getenv('WHISPER_MODEL', 'tiny')  # Use tiny for faster loading
+    print(f"   Model: {WHISPER_MODEL}")
+    
+    # Load model
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    whisper_model = whisper.load_model(WHISPER_MODEL, device=device)
+    whisper_model.eval()
+    
+    # Create wrapper class
+    class WhisperService:
+        def __init__(self, model, device):
+            self.model = model
+            self.device = device
+            self.is_ready = True
+            print(f"   ✅ Whisper loaded successfully!")
+        
+        def transcribe(self, audio_path, language=None):
+            """Transcribe audio with Whisper"""
+            import numpy as np
+            
+            try:
+                # Whisper transcription options
+                options = {
+                    'task': 'transcribe',
+                    'fp16': self.device == 'cuda',
+                    'verbose': False,
+                    'beam_size': 5,
+                    'best_of': 5,
+                    'temperature': 0.0
+                }
+                
+                if language:
+                    options['language'] = language
+                
+                # Transcribe
+                with torch.inference_mode():
+                    result = self.model.transcribe(audio_path, **options)
+                
+                text = result['text'].strip()
+                detected_lang = result.get('language', 'en')
+                
+                # Calculate confidence from segments
+                segments = result.get('segments', [])
+                if segments:
+                    avg_logprob = np.mean([s.get('avg_logprob', -1) for s in segments])
+                    confidence = min(0.99, max(0.5, np.exp(avg_logprob)))
+                else:
+                    confidence = 0.85
+                
+                return {
+                    'text': text,
+                    'language': detected_lang,
+                    'confidence': confidence,
+                    'duration': len(text) / 150 * 60,  # Rough estimate
+                    'method': f'Whisper-{WHISPER_MODEL}'
+                }
+                
+            except Exception as e:
+                print(f"❌ Whisper transcription error: {e}")
+                raise
+    
+    # Initialize service
+    whisper_service = WhisperService(whisper_model, device)
+    WHISPER_AVAILABLE = True
+    print(f"\n{'='*80}")
+    print("✅ WHISPER READY!")
+    print("="*80)
+
+except ImportError as e:
+    print(f"\n⚠️  Whisper dependencies not installed: {e}")
+    print("   STT will use fallback mode")
+    print("   To enable Whisper:")
+    print("   1. pip install torch torchvision torchaudio")
+    print("   2. pip install openai-whisper")
+    WHISPER_AVAILABLE = False
+
 except Exception as e:
-    print(f"⚠️  Whisper unavailable: {e}")
-    print("   STT will use alternative methods")
-    whisper_service = None
+    print(f"\n⚠️  Whisper initialization failed: {e}")
+    print("   STT will use fallback mode")
+    traceback.print_exc()
+    WHISPER_AVAILABLE = False
 
 print("\n" + "="*80)
 print("✅ SPEECH ENGINE READY")
 print("="*80)
 print(f"   • Languages: {len(ultimate_detector.LANGUAGES)}")
 print(f"   • TTS: gTTS (fully operational)")
-print(f"   • STT: {'Whisper' if whisper_service else 'Fallback mode'}")
+print(f"   • STT: {'Whisper (' + os.getenv('WHISPER_MODEL', 'tiny') + ')' if WHISPER_AVAILABLE else 'Fallback mode'}")
 print("="*80 + "\n")
 
 # ============================================================================
@@ -129,7 +213,7 @@ def text_to_speech():
         return jsonify({"error": str(e)}), 500
 
 # ============================================================================
-# SPEECH-TO-TEXT (With Fallback)
+# SPEECH-TO-TEXT (With Whisper or Fallback)
 # ============================================================================
 
 @app.route('/stt', methods=['POST', 'OPTIONS'])
@@ -159,11 +243,11 @@ def speech_to_text():
         audio_file.save(str(temp_path))
         print(f"💾 Saved: {temp_path.name}")
         
-        # Try Whisper first
-        if whisper_service and whisper_service.is_ready:
+        # Check if Whisper is available
+        if WHISPER_AVAILABLE and whisper_service and whisper_service.is_ready:
             print("🤖 Using Whisper transcription...")
             
-            # Convert if needed
+            # Convert to WAV if needed for better compatibility
             audio_path = temp_path
             if ext.lower() not in ['.wav', '.mp3', '.m4a', '.flac']:
                 try:
@@ -176,8 +260,9 @@ def speech_to_text():
                         temp_path.unlink()
                     audio_path = wav_path
                     temp_path = wav_path
+                    print(f"   ✅ Converted to: {wav_path.name}")
                 except Exception as e:
-                    print(f"⚠️ Conversion failed: {e}")
+                    print(f"⚠️ Conversion failed: {e}, using original")
             
             # Whisper transcription
             result = whisper_service.transcribe(str(audio_path), language=None)
@@ -192,6 +277,7 @@ def speech_to_text():
             final_lang = whisper_lang
             final_confidence = confidence
             
+            # If text detection has high confidence and differs, use it
             if text_conf > 0.85 and text_lang != whisper_lang:
                 final_lang = text_lang
                 final_confidence = (confidence + text_conf) / 2
@@ -218,22 +304,23 @@ def speech_to_text():
             }), 200
         
         else:
-            # FALLBACK: Return instructional message
+            # FALLBACK: Return message for browser-based STT
             print("⚠️  Whisper unavailable - returning fallback response")
             
             return jsonify({
-                "text": "[Please use browser's built-in speech recognition or install Whisper dependencies]",
+                "text": "",
                 "detected_language": {
                     "code": "en",
                     "name": "English",
                     "native_name": "English",
                     "script": "Latin",
-                    "confidence": 0.5
+                    "confidence": 0.0
                 },
                 "metadata": {
                     "auto_detected": False,
                     "method": "fallback",
-                    "message": "Whisper service unavailable. Please install: pip install openai-whisper torch torchaudio"
+                    "message": "Whisper not available. Install: pip install torch openai-whisper",
+                    "fallback": True
                 }
             }), 200
         
@@ -243,6 +330,7 @@ def speech_to_text():
         return jsonify({"error": str(e)}), 500
     
     finally:
+        # Cleanup
         if temp_path and Path(temp_path).exists():
             try:
                 Path(temp_path).unlink()
@@ -261,9 +349,15 @@ def root():
         "status": "operational",
         "features": {
             "tts": "operational (gTTS)",
-            "stt": "operational" if whisper_service else "fallback mode",
+            "stt": "operational" if WHISPER_AVAILABLE else "fallback mode",
             "languages": len(ultimate_detector.LANGUAGES),
-            "auto_detection": True
+            "auto_detection": True,
+            "whisper": "loaded" if WHISPER_AVAILABLE else "not available"
+        },
+        "whisper_status": {
+            "available": WHISPER_AVAILABLE,
+            "model": os.getenv('WHISPER_MODEL', 'tiny') if WHISPER_AVAILABLE else None,
+            "device": whisper_service.device if WHISPER_AVAILABLE and whisper_service else None
         }
     }), 200
 
@@ -273,8 +367,8 @@ def health():
         "status": "healthy",
         "services": {
             "tts": "operational",
-            "stt": "operational" if whisper_service else "degraded",
-            "whisper": "loaded" if whisper_service else "unavailable"
+            "stt": "operational" if WHISPER_AVAILABLE else "degraded",
+            "whisper": "loaded" if WHISPER_AVAILABLE else "unavailable"
         }
     }), 200
 
@@ -308,7 +402,12 @@ if __name__ == '__main__':
     print(f"{'='*80}")
     print(f"📡 Server: http://localhost:8000")
     print(f"🎯 TTS: Fully operational with auto-detection")
-    print(f"🎙️  STT: {'Whisper ready' if whisper_service else 'Fallback mode - install Whisper for full features'}")
+    print(f"🎙️  STT: {'Whisper ready' if WHISPER_AVAILABLE else 'Fallback mode'}")
+    if not WHISPER_AVAILABLE:
+        print(f"\n💡 To enable Whisper STT:")
+        print(f"   1. pip install torch torchvision torchaudio")
+        print(f"   2. pip install openai-whisper")
+        print(f"   3. Restart this server")
     print(f"{'='*80}\n")
     
     app.run(
