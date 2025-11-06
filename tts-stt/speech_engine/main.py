@@ -1,6 +1,6 @@
 """
-FIXED: main.py - Enhanced Speech Engine with FORCED Language-Specific Transcription
-This version FORCES Whisper to transcribe in the correct detected language script
+FIXED: main.py - Native Language Transcription (No Translation)
+Optimized for Speed - Transcribes in Original Language Script
 """
 
 from flask import Flask, request, jsonify, send_file
@@ -25,12 +25,12 @@ TEMP_DIR = BASE_DIR / "temp_audio"
 AUDIO_DIR.mkdir(parents=True, exist_ok=True)
 TEMP_DIR.mkdir(parents=True, exist_ok=True)
 
-# Whisper initialization - OPTIMIZED FOR INDIAN LANGUAGES
+# Whisper initialization - OPTIMIZED FOR SPEED
 whisper_service = None
 WHISPER_AVAILABLE = False
 
 print("\n" + "="*80)
-print("🚀 INITIALIZING ENHANCED SPEECH ENGINE - FORCE CORRECT SCRIPT")
+print("🚀 INITIALIZING OPTIMIZED SPEECH ENGINE")
 print("="*80)
 
 # Try to import and initialize Whisper
@@ -44,8 +44,8 @@ try:
     import whisper
     print(f"   ✅ Whisper available")
     
-    print("\n3️⃣ Loading Whisper model...")
-    # CRITICAL: Use 'base' or 'medium' for better Indian language support
+    print("\n3️⃣ Loading Whisper model (OPTIMIZED)...")
+    # Use 'base' for speed/accuracy balance
     WHISPER_MODEL = os.getenv('WHISPER_MODEL', 'base')
     print(f"   Model: {WHISPER_MODEL}")
     
@@ -53,92 +53,54 @@ try:
     whisper_model = whisper.load_model(WHISPER_MODEL, device=device)
     whisper_model.eval()
     
-    # Language-specific initial prompts to FORCE correct script
-    LANGUAGE_PROMPTS = {
-        'hi': 'यह हिंदी में है। हिंदी भाषा में बोल रहे हैं।',
-        'kn': 'ಇದು ಕನ್ನಡದಲ್ಲಿದೆ। ಕನ್ನಡ ಭಾಷೆಯಲ್ಲಿ ಮಾತನಾಡುತ್ತಿದ್ದಾರೆ।',
-        'ta': 'இது தமிழில் உள்ளது। தமிழ் மொழியில் பேசுகிறார்கள்।',
-        'te': 'ఇది తెలుగులో ఉంది। తెలుగు భాషలో మాట్లాడుతున్నారు।',
-        'ml': 'ഇത് മലയാളത്തിലാണ്। മലയാളം ഭാഷയിൽ സംസാരിക്കുന്നു।',
-        'mr': 'हे मराठीत आहे। मराठी भाषेत बोलत आहेत।',
-        'gu': 'આ ગુજરાતીમાં છે। ગુજરાતી ભાષામાં બોલી રહ્યા છે।',
-        'bn': 'এটি বাংলায় আছে। বাংলা ভাষায় কথা বলছেন।',
-        'pa': 'ਇਹ ਪੰਜਾਬੀ ਵਿੱਚ ਹੈ। ਪੰਜਾਬੀ ਭਾਸ਼ਾ ਵਿੱਚ ਬੋਲ ਰਹੇ ਹਨ।',
-        'ur': 'یہ اردو میں ہے۔ اردو زبان میں بات کر رہے ہیں۔',
-        'or': 'ଏହା ଓଡ଼ିଆରେ ଅଛି। ଓଡ଼ିଆ ଭାଷାରେ କଥା ହେଉଛି।',
-        'as': 'এইটো অসমীয়াত আছে। অসমীয়া ভাষাত কথা কৈছে।',
-        'ne': 'यो नेपालीमा छ। नेपाली भाषामा बोल्दै हुनुहुन्छ।',
-        'en': 'This is in English. Speaking in English language.'
-    }
-    
-    # Enhanced wrapper with FORCED language transcription
-    class ForcedLanguageWhisperService:
+    # Optimized Whisper wrapper
+    class OptimizedWhisperService:
         def __init__(self, model, device):
             self.model = model
             self.device = device
             self.is_ready = True
-            print(f"   ✅ Whisper loaded with forced language support!")
+            print(f"   ✅ Whisper loaded - Native language transcription enabled!")
         
-        def transcribe(self, audio_path, detected_language_code=None):
+        def transcribe(self, audio_path, language_hint=None):
             """
-            CRITICAL FIX: Force Whisper to transcribe in detected language's script
+            FIXED: Transcribe in native language (NO TRANSLATION)
             """
             import numpy as np
             
             try:
-                # Map language codes to Whisper language names
-                whisper_lang_map = {
-                    'en': 'english',
-                    'hi': 'hindi',
-                    'kn': 'kannada',
-                    'ta': 'tamil',
-                    'te': 'telugu',
-                    'ml': 'malayalam',
-                    'mr': 'marathi',
-                    'gu': 'gujarati',
-                    'bn': 'bengali',
-                    'pa': 'punjabi',
-                    'ur': 'urdu',
-                    'or': 'odia',
-                    'as': 'assamese',
-                    'ne': 'nepali',
-                    'ar': 'arabic'
-                }
-                
-                # CRITICAL: Get Whisper language name
-                whisper_language = None
-                if detected_language_code and detected_language_code in whisper_lang_map:
-                    whisper_language = whisper_lang_map[detected_language_code]
-                    print(f"   🎯 FORCING language: {whisper_language} ({detected_language_code})")
-                
-                # Base transcription options
+                # Optimized transcription options for SPEED
                 options = {
-                    'task': 'transcribe',
+                    'task': 'transcribe',  # CRITICAL: transcribe (not translate)
                     'fp16': self.device == 'cuda',
                     'verbose': False,
-                    'beam_size': 5,
-                    'best_of': 5,
+                    'beam_size': 3,  # Reduced from 5 for speed
+                    'best_of': 3,    # Reduced from 5 for speed
                     'temperature': 0.0,
                     'compression_ratio_threshold': 2.4,
                     'logprob_threshold': -1.0,
                     'no_speech_threshold': 0.6,
-                    'condition_on_previous_text': True,
                 }
                 
-                # CRITICAL FIX 1: FORCE language parameter
-                if whisper_language:
-                    options['language'] = whisper_language
+                # CRITICAL FIX: Only add language if we have a hint
+                # Let Whisper auto-detect otherwise
+                if language_hint:
+                    whisper_lang_map = {
+                        'en': 'english', 'hi': 'hindi', 'kn': 'kannada',
+                        'ta': 'tamil', 'te': 'telugu', 'ml': 'malayalam',
+                        'mr': 'marathi', 'gu': 'gujarati', 'bn': 'bengali',
+                        'pa': 'punjabi', 'ur': 'urdu', 'or': 'odia',
+                        'as': 'assamese', 'ne': 'nepali', 'ar': 'arabic'
+                    }
                     
-                    # CRITICAL FIX 2: Add language-specific initial prompt
-                    if detected_language_code in LANGUAGE_PROMPTS:
-                        options['initial_prompt'] = LANGUAGE_PROMPTS[detected_language_code]
-                        print(f"   📝 Using prompt: {LANGUAGE_PROMPTS[detected_language_code][:50]}...")
+                    if language_hint in whisper_lang_map:
+                        options['language'] = whisper_lang_map[language_hint]
+                        print(f"   🎯 Language hint: {whisper_lang_map[language_hint]}")
                 
-                print(f"   🔄 Transcribing with FORCED settings...")
+                print(f"   🔄 Transcribing in native language...")
                 
-                # Transcribe with forced language
+                # Transcribe
                 with torch.inference_mode():
-                    result = self.model.transcribe(audio_path, **options)
+                    result = self.model.transcribe(str(audio_path), **options)
                 
                 text = result['text'].strip()
                 detected_lang = result.get('language', 'en')
@@ -151,26 +113,15 @@ try:
                 else:
                     confidence = 0.85
                 
-                # CRITICAL: Verify script matches language
-                script_match = self._verify_script(text, detected_language_code)
-                
-                if not script_match:
-                    print(f"   ⚠️ WARNING: Script mismatch detected!")
-                    print(f"   Expected: {detected_language_code}, Got: {detected_lang}")
-                    print(f"   Text: {text[:100]}")
-                    
-                    # Try to fix by forcing language again
-                    print(f"   🔄 Retrying with stricter settings...")
-                    options['temperature'] = (0.0, 0.2, 0.4, 0.6, 0.8)  # Multiple temperatures
-                    options['beam_size'] = 10  # More beams
-                    
-                    result = self.model.transcribe(audio_path, **options)
-                    text = result['text'].strip()
-                    detected_lang = result.get('language', detected_language_code)
-                
-                # Map back to our language codes
-                lang_code_map = {v: k for k, v in whisper_lang_map.items()}
-                final_lang_code = detected_language_code or lang_code_map.get(detected_lang, detected_lang)
+                # Map to our language codes
+                lang_code_map = {
+                    'english': 'en', 'hindi': 'hi', 'kannada': 'kn',
+                    'tamil': 'ta', 'telugu': 'te', 'malayalam': 'ml',
+                    'marathi': 'mr', 'gujarati': 'gu', 'bengali': 'bn',
+                    'punjabi': 'pa', 'urdu': 'ur', 'odia': 'or',
+                    'assamese': 'as', 'nepali': 'ne', 'arabic': 'ar'
+                }
+                final_lang_code = lang_code_map.get(detected_lang, 'en')
                 
                 print(f"   ✅ Transcribed successfully!")
                 print(f"   Language: {detected_lang} -> {final_lang_code}")
@@ -182,61 +133,18 @@ try:
                     'language': final_lang_code,
                     'confidence': confidence,
                     'duration': len(text) / 150 * 60,
-                    'method': f'Whisper-{WHISPER_MODEL}-forced',
-                    'script_verified': script_match
+                    'method': f'Whisper-{WHISPER_MODEL}-native'
                 }
                 
             except Exception as e:
                 print(f"❌ Whisper transcription error: {e}")
                 traceback.print_exc()
                 raise
-        
-        def _verify_script(self, text, expected_lang):
-            """Verify that the transcribed text is in the correct script"""
-            if not expected_lang or not text:
-                return True
-            
-            # Unicode ranges for verification
-            script_ranges = {
-                'hi': (0x0900, 0x097F),  # Devanagari
-                'kn': (0x0C80, 0x0CFF),  # Kannada
-                'ta': (0x0B80, 0x0BFF),  # Tamil
-                'te': (0x0C00, 0x0C7F),  # Telugu
-                'ml': (0x0D00, 0x0D7F),  # Malayalam
-                'mr': (0x0900, 0x097F),  # Devanagari (same as Hindi)
-                'gu': (0x0A80, 0x0AFF),  # Gujarati
-                'bn': (0x0980, 0x09FF),  # Bengali
-                'pa': (0x0A00, 0x0A7F),  # Gurmukhi
-                'ur': (0x0600, 0x06FF),  # Arabic
-                'or': (0x0B00, 0x0B7F),  # Odia
-                'as': (0x0980, 0x09FF),  # Bengali/Assamese
-                'ne': (0x0900, 0x097F),  # Devanagari
-                'en': (0x0020, 0x007F),  # Latin
-            }
-            
-            if expected_lang not in script_ranges:
-                return True
-            
-            start, end = script_ranges[expected_lang]
-            
-            # Count characters in expected script
-            expected_script_chars = sum(1 for c in text if start <= ord(c) <= end and c.isalpha())
-            total_alpha_chars = sum(1 for c in text if c.isalpha())
-            
-            if total_alpha_chars == 0:
-                return True
-            
-            match_percentage = expected_script_chars / total_alpha_chars
-            
-            print(f"   📊 Script match: {match_percentage:.1%} ({expected_script_chars}/{total_alpha_chars})")
-            
-            # Consider it a match if >50% of characters are in expected script
-            return match_percentage > 0.5
     
-    whisper_service = ForcedLanguageWhisperService(whisper_model, device)
+    whisper_service = OptimizedWhisperService(whisper_model, device)
     WHISPER_AVAILABLE = True
     print(f"\n{'='*80}")
-    print("✅ WHISPER READY WITH FORCED LANGUAGE SUPPORT!")
+    print("✅ WHISPER READY - NATIVE LANGUAGE TRANSCRIPTION")
     print("="*80)
 
 except ImportError as e:
@@ -253,11 +161,11 @@ print("✅ SPEECH ENGINE READY")
 print("="*80)
 print(f"   • Languages: {len(ultimate_detector.LANGUAGES)}")
 print(f"   • TTS: gTTS (operational)")
-print(f"   • STT: {'Whisper (' + WHISPER_MODEL + ') with forced script' if WHISPER_AVAILABLE else 'Fallback'}")
+print(f"   • STT: {'Optimized Whisper (' + WHISPER_MODEL + ')' if WHISPER_AVAILABLE else 'Fallback'}")
 print("="*80 + "\n")
 
 # ============================================================================
-# TEXT-TO-SPEECH (Working perfectly)
+# TEXT-TO-SPEECH (PERFECT - DO NOT TOUCH)
 # ============================================================================
 
 @app.route('/tts', methods=['POST', 'OPTIONS'])
@@ -333,12 +241,12 @@ def text_to_speech():
         return jsonify({"error": str(e)}), 500
 
 # ============================================================================
-# SPEECH-TO-TEXT (FIXED WITH FORCED LANGUAGE)
+# SPEECH-TO-TEXT (OPTIMIZED - NATIVE LANGUAGE OUTPUT)
 # ============================================================================
 
 @app.route('/stt', methods=['POST', 'OPTIONS'])
 def speech_to_text():
-    """FIXED: Transcribe speech with FORCED language-specific script"""
+    """OPTIMIZED: Fast transcription in native language (NO TRANSLATION)"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
     
@@ -346,7 +254,7 @@ def speech_to_text():
     
     try:
         print(f"\n{'='*60}")
-        print("🎙️ [STT] ENHANCED Request with FORCED SCRIPT")
+        print("🎙️ [STT] OPTIMIZED - Native Language Transcription")
         print(f"{'='*60}")
         
         if 'audio' not in request.files:
@@ -364,9 +272,11 @@ def speech_to_text():
         print(f"💾 Saved: {temp_path.name}")
         
         if WHISPER_AVAILABLE and whisper_service and whisper_service.is_ready:
-            print("🤖 Using Whisper with FORCED language script...")
+            print("🤖 Using Optimized Whisper...")
             
-            # Convert to WAV for better processing
+            start_time = time.time()
+            
+            # Convert to WAV if needed (for consistency)
             audio_path = temp_path
             if ext.lower() not in ['.wav']:
                 try:
@@ -384,109 +294,55 @@ def speech_to_text():
                 except Exception as e:
                     print(f"⚠️ Conversion failed: {e}, using original")
             
-            # STEP 1: Pre-detect language from audio duration/characteristics
-            try:
-                from pydub import AudioSegment
-                audio_segment = AudioSegment.from_wav(str(audio_path))
-                duration_sec = len(audio_segment) / 1000.0
-                print(f"   📊 Audio duration: {duration_sec:.1f}s")
-                
-                if duration_sec < 2:
-                    print(f"   ⚠️ Very short audio - detection may be less accurate")
-                
-                print(f"   ✅ Audio length sufficient for detection")
-            except Exception as e:
-                print(f"   ⚠️ Audio analysis: {e}")
-            
-            # STEP 2: First pass - detect language WITHOUT forcing
-            print(f"   🔍 Pass 1: Detecting language...")
-            
-            first_pass_options = {
-                'task': 'transcribe',
-                'fp16': whisper_service.device == 'cuda',
-                'verbose': False,
-                'beam_size': 3,
-                'temperature': 0.0,
-            }
-            
-            with torch.inference_mode():
-                first_result = whisper_service.model.transcribe(str(audio_path), **first_pass_options)
-            
-            detected_whisper_lang = first_result.get('language', 'en')
-            first_pass_text = first_result['text'].strip()
-            
-            # Map to our language code
-            whisper_to_code = {
-                'english': 'en', 'hindi': 'hi', 'kannada': 'kn', 'tamil': 'ta',
-                'telugu': 'te', 'malayalam': 'ml', 'marathi': 'mr', 'gujarati': 'gu',
-                'bengali': 'bn', 'punjabi': 'pa', 'urdu': 'ur', 'odia': 'or',
-                'assamese': 'as', 'nepali': 'ne', 'arabic': 'ar'
-            }
-            
-            detected_lang_code = whisper_to_code.get(detected_whisper_lang, 'en')
-            
-            print(f"   ✅ Detected: {detected_whisper_lang} -> {detected_lang_code}")
-            print(f"   Text preview: {first_pass_text[:100]}...")
-            
-            # STEP 3: Second pass - FORCE transcription in detected language
-            print(f"   🔄 Pass 2: FORCING {detected_lang_code} script...")
-            
-            result = whisper_service.transcribe(
-                str(audio_path),
-                detected_language_code=detected_lang_code
-            )
+            # SINGLE PASS: Let Whisper auto-detect and transcribe in native language
+            result = whisper_service.transcribe(str(audio_path))
             
             text = result['text']
-            final_lang = result['language']
+            detected_lang = result['language']
             confidence = result['confidence']
-            script_verified = result.get('script_verified', False)
             
-            # STEP 4: Cross-verify with text-based detection
+            processing_time = time.time() - start_time
+            
+            # Verify with text-based detection for accuracy
             if text and len(text) > 10:
                 text_lang, text_conf = ultimate_detector.detect_text_language(
-                    text,
+                    text, 
                     verbose=False
                 )
                 
                 print(f"   🔍 Cross-check:")
-                print(f"      Whisper detected: {detected_lang_code}")
-                print(f"      Text analysis: {text_lang} ({text_conf:.1%})")
-                print(f"      Script verified: {script_verified}")
+                print(f"      Whisper: {detected_lang}")
+                print(f"      Text: {text_lang} ({text_conf:.1%})")
                 
-                # If text detection strongly disagrees and script doesn't match, trust text detection
-                if text_conf > 0.85 and text_lang != final_lang and not script_verified:
-                    print(f"   ⚠️ Script mismatch! Using text-detected language: {text_lang}")
-                    final_lang = text_lang
-                    final_confidence = text_conf
-                else:
-                    final_confidence = (confidence + text_conf) / 2
-            else:
-                final_confidence = confidence
+                # Use text detection if it has higher confidence
+                if text_conf > 0.85 and text_conf > confidence:
+                    detected_lang = text_lang
+                    confidence = text_conf
+                    print(f"   ✅ Using text-verified language: {text_lang}")
             
-            lang_info = ultimate_detector.get_language_info(final_lang)
+            lang_info = ultimate_detector.get_language_info(detected_lang)
             
-            print(f"✅ FINAL: {lang_info['name']} ({final_confidence:.2%})")
+            print(f"✅ TRANSCRIBED in {processing_time:.2f}s")
+            print(f"   Language: {lang_info['name']}")
+            print(f"   Confidence: {confidence:.2%}")
             print(f"   Text: {text[:100]}...")
-            print(f"   Script verified: {'✓' if script_verified else '✗'}")
             print(f"{'='*60}\n")
             
             return jsonify({
                 "text": text,
                 "detected_language": {
-                    "code": final_lang,
+                    "code": detected_lang,
                     "name": lang_info['name'],
                     "native_name": lang_info['native'],
                     "script": lang_info['script'],
-                    "confidence": final_confidence
+                    "confidence": confidence
                 },
                 "metadata": {
                     "auto_detected": True,
                     "method": result['method'],
                     "duration": result['duration'],
-                    "whisper_detected": detected_lang_code,
-                    "text_verified": text_lang if 'text_lang' in locals() else None,
-                    "script_verified": script_verified,
-                    "two_pass_detection": True
+                    "processing_time": processing_time,
+                    "native_transcription": True
                 }
             }), 200
         
@@ -528,22 +384,22 @@ def speech_to_text():
 @app.route('/', methods=['GET'])
 def root():
     return jsonify({
-        "name": "Enhanced Speech Engine - Forced Script Correction",
-        "version": "7.0.0",
+        "name": "Optimized Speech Engine - Native Language Transcription",
+        "version": "8.0.0",
         "status": "operational",
         "features": {
             "tts": "operational (gTTS)",
-            "stt": "enhanced with forced script" if WHISPER_AVAILABLE else "fallback",
+            "stt": "optimized native transcription" if WHISPER_AVAILABLE else "fallback",
             "languages": len(ultimate_detector.LANGUAGES),
             "auto_detection": True,
-            "script_forcing": True,
-            "two_pass_detection": True
+            "native_transcription": True,
+            "no_translation": True
         },
         "whisper_status": {
             "available": WHISPER_AVAILABLE,
             "model": WHISPER_MODEL if WHISPER_AVAILABLE else None,
             "device": whisper_service.device if WHISPER_AVAILABLE and whisper_service else None,
-            "optimization": "Forced language script" if WHISPER_AVAILABLE else None
+            "optimization": "Native language output (no translation)" if WHISPER_AVAILABLE else None
         }
     }), 200
 
@@ -553,8 +409,8 @@ def health():
         "status": "healthy",
         "services": {
             "tts": "operational",
-            "stt": "enhanced" if WHISPER_AVAILABLE else "degraded",
-            "whisper": "loaded with forced script" if WHISPER_AVAILABLE else "unavailable"
+            "stt": "optimized" if WHISPER_AVAILABLE else "degraded",
+            "whisper": "native transcription" if WHISPER_AVAILABLE else "unavailable"
         }
     }), 200
 
@@ -584,21 +440,20 @@ def serve_audio(filename):
 
 if __name__ == '__main__':
     print(f"\n{'='*80}")
-    print("🎉 STARTING SPEECH ENGINE WITH FORCED SCRIPT CORRECTION")
+    print("🎉 STARTING OPTIMIZED SPEECH ENGINE")
     print(f"{'='*80}")
     print(f"📡 Server: http://localhost:8000")
-    print(f"🎯 TTS: Operational with auto-detection")
-    print(f"🎙️  STT: {'Enhanced with forced script (' + WHISPER_MODEL + ')' if WHISPER_AVAILABLE else 'Fallback'}")
+    print(f"🎯 TTS: Perfect (gTTS with auto-detection)")
+    print(f"🎙️  STT: {'Optimized (' + WHISPER_MODEL + ') - Native Language' if WHISPER_AVAILABLE else 'Fallback'}")
     
     if not WHISPER_AVAILABLE:
         print(f"\n💡 To enable Whisper STT:")
         print(f"   pip install torch openai-whisper pydub")
     else:
-        print(f"\n✅ Whisper configured with:")
-        print(f"   • Two-pass detection (detect → force)")
-        print(f"   • Language-specific prompts")
-        print(f"   • Script verification")
-        print(f"   • Cross-validation with text detection")
+        print(f"\n✅ Whisper configured for:")
+        print(f"   • Native language transcription (NO translation)")
+        print(f"   • Optimized for speed (beam_size=3)")
+        print(f"   • Auto language detection")
     
     print(f"{'='*80}\n")
     
