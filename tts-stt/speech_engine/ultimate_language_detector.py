@@ -1,6 +1,9 @@
 """
-FIXED: Ultimate Language Detector
-Key Fix: Hindi vs Nepali detection (both use Devanagari)
+FIXED: Ultimate Language Detector - INDIAN LANGUAGES ONLY
+Key Fixes:
+1. Removed Nepali completely
+2. Improved Hindi detection (no confusion with Nepali)
+3. Only Indian languages supported
 """
 
 import re
@@ -9,11 +12,10 @@ import unicodedata
 
 class UltimateLanguageDetector:
     """
-    Production-grade language detection for Indian subcontinent
-    FIXED: Better Hindi vs Nepali distinction
+    Production-grade language detection for Indian languages ONLY
     """
     
-    # Complete language database
+    # INDIAN LANGUAGES ONLY - NO NEPALI
     LANGUAGES = {
         'en': {
             'name': 'English', 
@@ -32,13 +34,13 @@ class UltimateLanguageDetector:
             'whisper': 'hi',
             'script': 'Devanagari',
             'unicode_range': [(0x0900, 0x097F)],
-            # HINDI-SPECIFIC keywords (different from Nepali)
-            'keywords': ['है', 'और', 'का', 'के', 'में', 'से', 'को', 'की', 'ने', 'यह', 'था', 'हैं', 'पर'],
-            'common_words': ['नमस्ते', 'कैसे', 'क्या', 'कहाँ', 'कब', 'क्यों', 'कौन', 'अच्छा', 'बहुत', 'लोग'],
+            # STRONG Hindi-specific keywords
+            'keywords': ['है', 'हैं', 'और', 'का', 'के', 'में', 'से', 'को', 'की', 'ने', 'यह', 'था', 'थी', 'पर', 'भी', 'हो', 'गया'],
+            'common_words': ['नमस्ते', 'कैसे', 'क्या', 'कहाँ', 'कब', 'क्यों', 'कौन', 'अच्छा', 'बहुत', 'लोग', 'आप', 'मैं', 'तुम', 'हम'],
             'consonants': ['क', 'ख', 'ग', 'घ', 'च', 'छ', 'ज', 'झ', 'ट', 'ठ'],
             'vowels': ['अ', 'आ', 'इ', 'ई', 'उ', 'ऊ', 'ए', 'ऐ', 'ओ', 'औ'],
-            # HINDI-SPECIFIC patterns
-            'unique_patterns': ['मैं', 'तुम', 'हम', 'आप', 'वह', 'यह']
+            # CRITICAL: Hindi-specific patterns (NOT in Nepali)
+            'unique_patterns': ['मैं', 'तुम', 'हम', 'आप', 'वह', 'यह', 'था', 'थी', 'हैं', 'और']
         },
         'bn': {
             'name': 'Bengali', 
@@ -62,7 +64,7 @@ class UltimateLanguageDetector:
             'keywords': ['అని', 'కూడా', 'ఉంది', 'చేసి', 'లో', 'కి', 'నుండి', 'తో', 'గా'],
             'common_words': ['హలో', 'ఎలా', 'ఏమి', 'ఎక్కడ', 'ఎప్పుడు', 'ఎందుకు', 'ఎవరు'],
             'consonants': ['క', 'ఖ', 'గ', 'ఘ', 'చ', 'ఛ', 'జ', 'ఝ', 'ట', 'ఠ'],
-            'vowels': ['అ', 'ఆ', 'ఇ', 'ఈ', 'உ', 'ఊ', 'ఎ', 'ఏ', 'ఒ', 'ఓ']
+            'vowels': ['అ', 'ఆ', 'ఇ', 'ఈ', 'ఉ', 'ఊ', 'ఎ', 'ఏ', 'ఒ', 'ఓ']
         },
         'mr': {
             'name': 'Marathi', 
@@ -73,7 +75,7 @@ class UltimateLanguageDetector:
             'unicode_range': [(0x0900, 0x097F)],
             'keywords': ['आणि', 'असे', 'होते', 'आहे', 'मी', 'तू', 'तो', 'ती', 'हे', 'ते'],
             'common_words': ['नमस्कार', 'कसे', 'काय', 'कुठे', 'केव्हा', 'का', 'कोण'],
-            'unique_chars': ['ळ', 'ऱ']
+            'unique_chars': ['ळ', 'ऱ']  # Unique to Marathi
         },
         'ta': {
             'name': 'Tamil', 
@@ -166,54 +168,20 @@ class UltimateLanguageDetector:
             'common_words': ['নমস্কাৰ', 'কেনেকৈ', 'কি', 'ক\'ত', 'কেতিয়া', 'কিয়', 'কোন'],
             'unique_chars': ['ৰ', 'ৱ']
         },
-        # 'ne': {
-        #     'name': 'Nepali', 
-        #     'native': 'नेपाली', 
-        #     'gtts': 'ne', 
-        #     'whisper': 'ne',
-        #     'script': 'Devanagari',
-        #     'unicode_range': [(0x0900, 0x097F)],
-        #     # NEPALI-SPECIFIC keywords (different from Hindi)
-        #     'keywords': ['छ', 'र', 'को', 'मा', 'ले', 'लाई', 'बाट', 'एक', 'गर्न', 'हुन्छ'],
-        #     'common_words': ['नमस्ते', 'कस्तो', 'के', 'कहाँ', 'कहिले', 'किन', 'को', 'राम्रो'],
-        #     # NEPALI-SPECIFIC patterns
-        #     'unique_patterns': ['छ', 'हुन्छ', 'गर्न', 'भन्न']
-        # },
-        'sd': {
-            'name': 'Sindhi', 
-            'native': 'سنڌي', 
-            'gtts': 'sd', 
-            'whisper': 'sd',
-            'script': 'Arabic',
-            'unicode_range': [(0x0600, 0x06FF)],
-            'keywords': ['آهي', '۽', 'جو', 'جي', 'کي', '۾', 'تي'],
-            'direction': 'rtl'
-        },
-        'sa': {
-            'name': 'Sanskrit', 
-            'native': 'संस्कृतम्', 
-            'gtts': 'sa', 
-            'whisper': 'sa',
-            'script': 'Devanagari',
-            'unicode_range': [(0x0900, 0x097F)],
-            'keywords': ['अस्ति', 'च', 'एव', 'तु', 'वा', 'किम्', 'कुत्र'],
-            'unique_pattern': r'[ः।॥]'
-        },
-        'ar': {
-            'name': 'Arabic', 
-            'native': 'العربية', 
-            'gtts': 'ar', 
-            'whisper': 'ar',
-            'script': 'Arabic',
-            'unicode_range': [(0x0600, 0x06FF), (0x0750, 0x077F), (0xFB50, 0xFDFF), (0xFE70, 0xFEFF)],
-            'keywords': ['هو', 'هي', 'في', 'من', 'إلى', 'على', 'هذا', 'ذلك', 'التي', 'الذي'],
-            'common_words': ['مرحبا', 'كيف', 'ماذا', 'أين', 'متى', 'لماذا', 'من'],
-            'direction': 'rtl'
-        }
-    }
+    #     'sa': {
+    #         'name': 'Sanskrit', 
+    #         'native': 'संस्कृतम्', 
+    #         'gtts': 'sa', 
+    #         'whisper': 'sa',
+    #         'script': 'Devanagari',
+    #         'unicode_range': [(0x0900, 0x097F)],
+    #         'keywords': ['अस्ति', 'च', 'एव', 'तु', 'वा', 'किम्', 'कुत्र'],
+    #         'unique_pattern': r'[ः।॥]'
+    #     }
+    # }
     
     def __init__(self):
-        print(f"🌍 Ultimate Language Detector - {len(self.LANGUAGES)} languages")
+        print(f"🌍 Ultimate Language Detector - {len(self.LANGUAGES)} INDIAN languages")
         self._build_detection_cache()
     
     def _build_detection_cache(self):
@@ -228,7 +196,7 @@ class UltimateLanguageDetector:
     
     def detect_text_language(self, text: str, verbose: bool = True) -> Tuple[str, float]:
         """
-        FIXED: Better Hindi vs Nepali detection
+        FIXED: Better Hindi detection (no Nepali confusion)
         """
         if not text or len(text.strip()) < 2:
             return 'en', 0.5
@@ -277,7 +245,7 @@ class UltimateLanguageDetector:
         return best_lang, best_conf
     
     def _detect_by_unicode(self, text: str) -> Tuple[str, float]:
-        """Detect by Unicode - FIXED Hindi vs Nepali"""
+        """Detect by Unicode - FIXED Hindi detection"""
         lang_counts = {lang: 0 for lang in self.LANGUAGES}
         total_chars = 0
         
@@ -296,42 +264,32 @@ class UltimateLanguageDetector:
         best_lang = max(lang_counts, key=lang_counts.get)
         confidence = lang_counts[best_lang] / total_chars
         
-        # CRITICAL FIX: Hindi vs Nepali distinction
-        if best_lang in ['hi', 'mr', 'ne', 'sa'] and confidence > 0.5:
-            # Check Hindi-specific patterns
+        # CRITICAL FIX: Devanagari languages (Hindi, Marathi, Sanskrit ONLY - NO NEPALI)
+        if best_lang in ['hi', 'mr', 'sa'] and confidence > 0.5:
+            # Check Hindi-specific patterns (STRONG indicators)
             hindi_score = 0
-            nepali_score = 0
             
-            # Hindi indicators
+            # Hindi STRONG indicators (never in Nepali)
             if 'मैं' in text or 'तुम' in text or 'हम' in text:
-                hindi_score += 3
-            if 'हैं' in text or 'था' in text or 'थी' in text:
-                hindi_score += 2
+                hindi_score += 5  # Very strong
+            if 'हैं' in text or 'था' in text or 'थी' in text or 'थे' in text:
+                hindi_score += 4  # Strong
             if 'और' in text:
-                hindi_score += 1
+                hindi_score += 2
+            if 'आप' in text or 'यह' in text or 'वह' in text:
+                hindi_score += 2
                 
-            # Nepali indicators
-            if 'छ' in text or 'हुन्छ' in text:
-                nepali_score += 3
-            if 'गर्न' in text or 'भन्न' in text:
-                nepali_score += 2
-            if re.search(r'[को|मा|ले]', text):
-                nepali_score += 1
-            
             # Marathi unique chars
             if 'ळ' in text or 'ऱ' in text:
                 best_lang = 'mr'
-            # Sanskrit punctuation
-            elif re.search(r'[ः।॥]', text):
-                best_lang = 'sa'
-            # FIXED: Prioritize Hindi if Hindi score is higher
-            elif hindi_score > nepali_score:
-                best_lang = 'hi'
-            elif nepali_score > hindi_score:
-                best_lang = 'ne'
+            # # Sanskrit punctuation
+            # elif re.search(r'[ः।॥]', text):
+            #     best_lang = 'sa'
+            # Default to Hindi for Devanagari (Nepali removed)
             else:
-                # Default to Hindi (more common)
                 best_lang = 'hi'
+                if hindi_score > 3:
+                    confidence = min(0.99, confidence + 0.1)  # Boost confidence
         
         return best_lang, min(0.99, confidence)
     
@@ -351,7 +309,7 @@ class UltimateLanguageDetector:
             matches = len(words & keywords)
             substring_matches = sum(1 for kw in keywords if kw in text_lower)
             
-            score = matches + (substring_matches * 0.5)
+            score = matches * 2 + substring_matches  # Weight exact matches higher
             
             if score > best_score:
                 best_score = score
@@ -374,7 +332,13 @@ class UltimateLanguageDetector:
             if 'common_words' in info:
                 for word in info['common_words']:
                     if word in text:
-                        score += 2.0
+                        score += 3.0  # Higher weight
+            
+            # Unique patterns (for Hindi)
+            if 'unique_patterns' in info:
+                for pattern in info['unique_patterns']:
+                    if pattern in text:
+                        score += 4.0  # Very high weight
             
             # Consonants/vowels
             if 'consonants' in info:
@@ -391,13 +355,7 @@ class UltimateLanguageDetector:
             if 'unique_chars' in info:
                 for char in info['unique_chars']:
                     if char in text:
-                        score += 5.0
-            
-            # NEW: Unique patterns (for Hindi/Nepali)
-            if 'unique_patterns' in info:
-                for pattern in info['unique_patterns']:
-                    if pattern in text:
-                        score += 3.0
+                        score += 5.0  # High weight for unique chars
             
             # RTL direction
             if info.get('direction') == 'rtl':
@@ -410,7 +368,7 @@ class UltimateLanguageDetector:
             best_lang = max(scores, key=scores.get)
             max_score = scores[best_lang]
             if max_score > 0:
-                confidence = min(0.95, max_score / 10)
+                confidence = min(0.95, max_score / 12)
                 return best_lang, confidence
         
         return 'en', 0.3
@@ -441,7 +399,7 @@ class UltimateLanguageDetector:
         if 'ৰ' in text or 'ৱ' in text:
             return 'as', 0.85
         
-        if 'ळ' in text or 'ऱ' in text:
+        if 'ળ' in text or 'ऱ' in text:
             return 'mr', 0.85
         
         return 'en', 0.2
