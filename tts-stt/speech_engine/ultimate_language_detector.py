@@ -168,17 +168,17 @@ class UltimateLanguageDetector:
             'common_words': ['নমস্কাৰ', 'কেনেকৈ', 'কি', 'ক\'ত', 'কেতিয়া', 'কিয়', 'কোন'],
             'unique_chars': ['ৰ', 'ৱ']
         },
-    #     'sa': {
-    #         'name': 'Sanskrit', 
-    #         'native': 'संस्कृतम्', 
-    #         'gtts': 'sa', 
-    #         'whisper': 'sa',
-    #         'script': 'Devanagari',
-    #         'unicode_range': [(0x0900, 0x097F)],
-    #         'keywords': ['अस्ति', 'च', 'एव', 'तु', 'वा', 'किम्', 'कुत्र'],
-    #         'unique_pattern': r'[ः।॥]'
-    #     }
-    # }
+        'sa': {
+            'name': 'Sanskrit', 
+            'native': 'संस्कृतम्', 
+            'gtts': 'sa', 
+            'whisper': 'sa',
+            'script': 'Devanagari',
+            'unicode_range': [(0x0900, 0x097F)],
+            'keywords': ['अस्ति', 'च', 'एव', 'तु', 'वा', 'किम्', 'कुत्र'],
+            'unique_pattern': r'[ः।॥]'
+        }
+    }
     
     def __init__(self):
         print(f"🌍 Ultimate Language Detector - {len(self.LANGUAGES)} INDIAN languages")
@@ -282,9 +282,9 @@ class UltimateLanguageDetector:
             # Marathi unique chars
             if 'ळ' in text or 'ऱ' in text:
                 best_lang = 'mr'
-            # # Sanskrit punctuation
-            # elif re.search(r'[ः।॥]', text):
-            #     best_lang = 'sa'
+            # Sanskrit punctuation
+            elif re.search(r'[ः।॥]', text):
+                best_lang = 'sa'
             # Default to Hindi for Devanagari (Nepali removed)
             else:
                 best_lang = 'hi'
