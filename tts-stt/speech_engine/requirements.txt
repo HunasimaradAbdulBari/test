@@ -1,126 +1,28 @@
-# # FastAPI Framework
-# fastapi==0.104.1
-# uvicorn[standard]==0.24.0
-# python-multipart==0.0.6
-# python-dotenv==1.0.0
-# pydantic==2.5.0
-# pydantic-settings==2.1.0
-
-# # Speech Processing - FIXED VERSIONS
-# openai-whisper
-# faster-whisper==0.10.0
-# edge-tts==6.1.9
-# gtts==2.4.0
-
-# # Audio Processing
-# pydub==0.25.1
-# librosa==0.10.1
-# soundfile==0.12.1
-# numpy==1.24.3
-# scipy==1.11.4
-
-# # File Handling
-# aiofiles==23.2.1
-
-# # HTTP Client  
-# httpx==0.25.2
-
-# # Utilities
-# langdetect==1.0.9
-# tenacity==8.2.3
-
-# # Additional dependencies that might be needed
-# torch
-# torchaudio
-
-
-
-
-
-
-
-
-# gTTS==2.5.4
-# SpeechRecognition==3.14.3
-# PyAudio==0.2.14
-# pyttsx3==2.99
-# playsound==1.2.2
-
-
-# # Supporting libraries
-# requests==2.32.5
-# deep-translator==1.11.4
-# beautifulsoup4==4.14.2
-# click==8.1.8
-# colorama==0.4.6
-
-# # Flask Framework
-# Flask==3.0.0
-# flask-cors==4.0.0
-# Werkzeug==3.0.1
-
-
-
-
-
-
-
-# Flask Framework
-# Flask==3.0.0
-# flask-cors==4.0.0
-# Werkzeug==3.0.1
-
-# # Speech Processing
-# gTTS==2.5.4
-# SpeechRecognition==3.10.0
-
-# # Audio Processing
-# pydub==0.25.1
-
-# # HTTP Client
-# requests==2.32.3
-
-# # Utilities
-# python-dotenv==1.0.0
-
 # Flask Framework
 Flask==3.0.0
 flask-cors==4.0.0
 Werkzeug==3.0.1
 
-# Speech Processing
+# Speech Processing - TTS (WORKING PERFECT)
 gTTS==2.5.4
-SpeechRecognition==3.10.0
+
+# Speech Processing - STT (FIXED)
 openai-whisper==20231117
 
-# Language Detection
-librosa==0.10.1
-soundfile==0.12.1
-ftfy==6.1.1
-langdetect==1.0.9
-langid==1.1.6
-polyglot==16.7.4
-textblob==0.17.1
-pycld2==0.41
-
-# Audio Processing
+# Audio Processing (Simple - No Over-Processing)
 pydub==0.25.1
-ffmpeg-python==0.2.0
 
-# HTTP Client
-requests==2.32.3
+# PyTorch (Required for Whisper)
+torch>=2.0.0
+torchaudio>=2.0.0
 
 # Utilities
 python-dotenv==1.0.0
-
-# NLP for better language detection
-nltk==3.8.1
-spacy==3.7.2
-scipy>=1.11.0
-indic-nlp-library==0.92
-indicnlp==0.1
-
-
-torch>=2.0.0
-torchaudio>=2.0.0
 numpy>=1.20.0
+
+# Optional: For better audio handling
+soundfile==0.12.1
+librosa==0.10.1
+
+# HTTP Client
+requests==2.32.3
