@@ -1,3 +1,4 @@
+// tts-stt/backend/controllers/sttController.js
 const axios = require('axios');
 const fs = require('fs');
 const FormData = require('form-data');
@@ -9,7 +10,7 @@ const transcribeAudio = async (req, res, next) => {
   let tempFilePath = null;
   
   try {
-    console.log('🎙️ [Backend STT] Request with AUTO-DETECTION');
+    console.log('🎙️ [Backend STT] Request with MANUAL LANGUAGE');
     
     if (!req.file) {
       console.error('❌ No file in request');
@@ -19,14 +20,18 @@ const transcribeAudio = async (req, res, next) => {
     }
 
     tempFilePath = req.file.path;
+    
+    // Get manual language selection from form data
+    const selectedLanguage = req.body.language || null;
+    
     console.log(`📁 File info:`, {
       filename: req.file.filename,
       originalname: req.file.originalname,
       mimetype: req.file.mimetype,
       size: req.file.size,
-      path: tempFilePath
+      path: tempFilePath,
+      selectedLanguage: selectedLanguage || 'Auto-detect'
     });
-    console.log('   (Language will be auto-detected)');
 
     // Verify file exists
     if (!fs.existsSync(tempFilePath)) {
@@ -37,17 +42,22 @@ const transcribeAudio = async (req, res, next) => {
     const fileBuffer = fs.readFileSync(tempFilePath);
     console.log(`📦 File buffer size: ${fileBuffer.length} bytes`);
 
-    // Create form data - NO LANGUAGE PARAMETER
+    // Create form data with manual language
     const formData = new FormData();
     formData.append('audio', fileBuffer, {
       filename: 'recording.webm',
       contentType: 'audio/webm',
     });
-    // Language parameter removed - auto-detection
+    
+    // Add language parameter if provided
+    if (selectedLanguage) {
+      formData.append('language', selectedLanguage);
+      console.log(`🎯 Manual language: ${selectedLanguage}`);
+    }
 
     console.log(`🔗 Forwarding to: ${PYTHON_API_URL}/stt`);
 
-    // Forward to Python Flask API
+    // Forward to Python Flask API - NO TIMEOUT
     const response = await axios.post(
       `${PYTHON_API_URL}/stt`,
       formData,
@@ -55,12 +65,12 @@ const transcribeAudio = async (req, res, next) => {
         headers: formData.getHeaders(),
         maxContentLength: Infinity,
         maxBodyLength: Infinity,
-        timeout: 60000,
+        timeout: 0, // NO TIMEOUT
       }
     );
 
     console.log('✅ [Backend STT] Python response received');
-    console.log(`   Detected: ${response.data.detected_language?.name || 'Unknown'}`);
+    console.log(`   Language: ${response.data.detected_language?.name || 'Unknown'}`);
     console.log(`   Text: ${response.data.text}`);
 
     const { text, detected_language, metadata } = response.data;
@@ -68,7 +78,7 @@ const transcribeAudio = async (req, res, next) => {
     // Return comprehensive response
     res.json({
       success: true,
-      message: 'Transcription completed with auto-detected language',
+      message: `Transcription completed${selectedLanguage ? ' with manual language selection' : ''}`,
       data: {
         text,
         transcription: text,
@@ -77,7 +87,8 @@ const transcribeAudio = async (req, res, next) => {
         duration: metadata?.duration,
         metadata: {
           ...metadata,
-          auto_detected: true
+          manual_selection: selectedLanguage,
+          auto_detected: !selectedLanguage
         }
       },
       timestamp: new Date().toISOString()

@@ -1,3 +1,4 @@
+// tts-stt/backend/controllers/ttsController.js
 const axios = require('axios');
 const APIResponse = require('../models/responseModel');
 
@@ -17,22 +18,19 @@ const generateSpeech = async (req, res, next) => {
       );
     }
 
-    if (text.length > 5000) {
-      return res.status(400).json(
-        APIResponse.error('Text exceeds maximum length of 5000 characters')
-      );
-    }
-
+    // REMOVED LENGTH LIMIT - Allow any length
     console.log(`🔗 Calling Python API: ${PYTHON_API_URL}/tts`);
     console.log(`   (Language will be auto-detected)`);
     
-    // Forward to Python Flask API - NO LANGUAGE PARAMETER
+    // Forward to Python Flask API - NO TIMEOUT, NO LENGTH LIMIT
     const response = await axios.post(
       `${PYTHON_API_URL}/tts`,
-      { text, speed, pitch },  // Language removed - auto-detection
+      { text, speed, pitch },
       {
         headers: { 'Content-Type': 'application/json' },
-        timeout: 30000,
+        timeout: 0, // NO TIMEOUT
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
       }
     );
 
