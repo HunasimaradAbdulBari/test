@@ -1,7 +1,10 @@
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import { useState, createContext, useContext } from 'react';
+
+// Create context to share auth data across the app
 const AuthContext = createContext();
 
-const AuthProvider = ({ children }) => {
+// AuthProvider component - wraps the entire app
+export const AuthProvider = ({ children }) => {
   // Check if user is already logged in (from localStorage)
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('currentUser');
@@ -51,4 +54,10 @@ const AuthProvider = ({ children }) => {
 };
 
 // Custom hook to use auth anywhere in the app
-const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within AuthProvider');
+  }
+  return context;
+};

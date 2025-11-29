@@ -1,4 +1,8 @@
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import Button from '../components/Button';
+
+// Login page component
 const Login = ({ onNavigate }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -84,3 +88,5 @@ const Login = ({ onNavigate }) => {
     </div>
   );
 };
+
+export default Login;

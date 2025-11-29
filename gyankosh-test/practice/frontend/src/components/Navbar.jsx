@@ -1,4 +1,8 @@
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import React from 'react';
+import { useAuth } from '../context/AuthContext';
+import Button from './Button';
+
+// Navbar component - shows at top of dashboard
 const Navbar = () => {
   const { user, logout } = useAuth();
 
@@ -6,6 +10,7 @@ const Navbar = () => {
     <nav className="bg-white shadow-md border-b border-gray-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
+          {/* Logo and Title Section */}
           <div className="flex items-center">
             <div className="bg-blue-500 text-white p-2 rounded-lg mr-3">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -15,6 +20,7 @@ const Navbar = () => {
             <h1 className="text-xl font-bold text-gray-800">Admission Portal</h1>
           </div>
           
+          {/* User Info and Logout Section */}
           <div className="flex items-center space-x-4">
             <span className="text-gray-600">Welcome, {user?.name}</span>
             <Button onClick={logout} variant="secondary">
@@ -26,3 +32,5 @@ const Navbar = () => {
     </nav>
   );
 };
+
+export default Navbar;

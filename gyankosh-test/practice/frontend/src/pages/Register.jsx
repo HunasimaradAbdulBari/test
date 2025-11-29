@@ -1,4 +1,8 @@
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import Button from '../components/Button';
+
+// Registration page component
 const Register = ({ onNavigate }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -135,3 +139,5 @@ const Register = ({ onNavigate }) => {
     </div>
   );
 };
+
+export default Register;

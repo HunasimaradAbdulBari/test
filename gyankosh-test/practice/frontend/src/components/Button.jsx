@@ -1,7 +1,11 @@
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import React from 'react';
+
+// Reusable Button Component with different variants
 const Button = ({ children, onClick, variant = 'primary', className = '' }) => {
-  // Different button styles based on variant prop
+  // Base styles that apply to all buttons
   const baseStyle = 'px-4 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer';
+  
+  // Different color schemes based on variant prop
   const variants = {
     primary: 'bg-blue-500 text-white hover:bg-blue-600 shadow-sm hover:shadow-md',
     secondary: 'bg-gray-200 text-gray-700 hover:bg-gray-300',
@@ -18,3 +22,5 @@ const Button = ({ children, onClick, variant = 'primary', className = '' }) => {
     </button>
   );
 };
+
+export default Button;

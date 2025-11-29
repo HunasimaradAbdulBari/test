@@ -1,4 +1,7 @@
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import React, { useState } from 'react';
+import Button from './Button';
+
+// Form component to add new student applications
 const StudentForm = ({ onAddStudent }) => {
   // Form state - holds all input values
   const [formData, setFormData] = useState({
@@ -44,6 +47,8 @@ const StudentForm = ({ onAddStudent }) => {
       course: '',
       status: 'Pending'
     });
+
+    alert('Student application added successfully!');
   };
 
   return (
@@ -105,7 +110,7 @@ const StudentForm = ({ onAddStudent }) => {
         </div>
 
         <div className="md:col-span-2">
-          <Button onClick={handleSubmit} variant="primary">
+          <Button onClick={handleSubmit} variant="primary" className="w-full md:w-auto">
             Add Student Application
           </Button>
         </div>
@@ -113,3 +118,5 @@ const StudentForm = ({ onAddStudent }) => {
     </div>
   );
 };
+
+export default StudentForm;

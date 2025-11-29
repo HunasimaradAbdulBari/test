@@ -1,4 +1,7 @@
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import React, { useState } from 'react';
+import Button from './Button';
+
+// Modal component to update student application status
 const StatusModal = ({ student, onClose, onUpdateStatus }) => {
   const [selectedStatus, setSelectedStatus] = useState(student.status);
 
@@ -42,3 +45,5 @@ const StatusModal = ({ student, onClose, onUpdateStatus }) => {
     </div>
   );
 };
+
+export default StatusModal;

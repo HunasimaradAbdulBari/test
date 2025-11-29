@@ -1,4 +1,10 @@
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import Navbar from '../components/Navbar';
+import StudentForm from '../components/StudentForm';
+import StudentTable from '../components/StudentTable';
+import StatusModal from '../components/StatusModal';
+
+// Main Dashboard component - manages all student data
 const Dashboard = () => {
   // Load students from localStorage on first render
   const [students, setStudents] = useState(() => {
@@ -39,6 +45,7 @@ const Dashboard = () => {
   const filteredStudents = students.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.course.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.status.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -51,7 +58,7 @@ const Dashboard = () => {
         <div className="mb-6">
           <input
             type="text"
-            placeholder="Search by name, email, or status..."
+            placeholder="Search by name, email, course, or status..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
@@ -85,3 +92,5 @@ const Dashboard = () => {
     </div>
   );
 };
+
+export default Dashboard;

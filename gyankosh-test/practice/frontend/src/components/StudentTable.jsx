@@ -1,6 +1,8 @@
-import React, { useState, createContext, useContext, useEffect } from 'react';
+import React from 'react';
+
+// Table component to display all student applications
 const StudentTable = ({ students, onDeleteStudent, onOpenStatusModal }) => {
-  // Status badge colors
+  // Get color class based on status
   const getStatusColor = (status) => {
     const colors = {
       Pending: 'bg-yellow-100 text-yellow-800',
@@ -72,13 +74,13 @@ const StudentTable = ({ students, onDeleteStudent, onOpenStatusModal }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     <button
                       onClick={() => onOpenStatusModal(student)}
-                      className="text-blue-600 hover:text-blue-900"
+                      className="text-blue-600 hover:text-blue-900 transition-colors"
                     >
                       Change Status
                     </button>
                     <button
                       onClick={() => onDeleteStudent(student.id)}
-                      className="text-red-600 hover:text-red-900"
+                      className="text-red-600 hover:text-red-900 transition-colors"
                     >
                       Delete
                     </button>
@@ -92,3 +94,5 @@ const StudentTable = ({ students, onDeleteStudent, onOpenStatusModal }) => {
     </div>
   );
 };
+
+export default StudentTable;
