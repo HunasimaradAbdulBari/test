@@ -1,22 +1,30 @@
 import React from 'react';
+import styles from '../styles/components/Button.module.css';
 
-// Reusable Button Component with different variants
-const Button = ({ children, onClick, variant = 'primary', className = '' }) => {
-  // Base styles that apply to all buttons
-  const baseStyle = 'px-4 py-2 rounded-lg font-medium transition-all duration-200 cursor-pointer';
-  
-  // Different color schemes based on variant prop
-  const variants = {
-    primary: 'bg-blue-500 text-white hover:bg-blue-600 shadow-sm hover:shadow-md',
-    secondary: 'bg-gray-200 text-gray-700 hover:bg-gray-300',
-    danger: 'bg-red-500 text-white hover:bg-red-600 shadow-sm hover:shadow-md',
-    success: 'bg-green-500 text-white hover:bg-green-600 shadow-sm hover:shadow-md'
-  };
+const Button = ({ 
+  children, 
+  onClick, 
+  variant = 'primary', 
+  size = 'medium',
+  fullWidth = false,
+  disabled = false,
+  loading = false,
+  className = '' 
+}) => {
+  const buttonClasses = [
+    styles.button,
+    styles[variant],
+    size && styles[size],
+    fullWidth && styles.fullWidth,
+    loading && styles.loading,
+    className
+  ].filter(Boolean).join(' ');
 
   return (
     <button
       onClick={onClick}
-      className={`${baseStyle} ${variants[variant]} ${className}`}
+      className={buttonClasses}
+      disabled={disabled || loading}
     >
       {children}
     </button>

@@ -3,10 +3,9 @@ import Navbar from '../components/Navbar';
 import StudentForm from '../components/StudentForm';
 import StudentTable from '../components/StudentTable';
 import StatusModal from '../components/StatusModal';
+import styles from '../styles/pages/Dashboard.module.css';
 
-// Main Dashboard component - manages all student data
 const Dashboard = () => {
-  // Load students from localStorage on first render
   const [students, setStudents] = useState(() => {
     const saved = localStorage.getItem('students');
     return saved ? JSON.parse(saved) : [];
@@ -15,24 +14,20 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  // Save students to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('students', JSON.stringify(students));
   }, [students]);
 
-  // Add new student to the list
   const handleAddStudent = (newStudent) => {
     setStudents(prev => [...prev, newStudent]);
   };
 
-  // Delete student from the list
   const handleDeleteStudent = (studentId) => {
     if (window.confirm('Are you sure you want to delete this student application?')) {
       setStudents(prev => prev.filter(s => s.id !== studentId));
     }
   };
 
-  // Update student status
   const handleUpdateStatus = (studentId, newStatus) => {
     setStudents(prev =>
       prev.map(s =>
@@ -41,7 +36,6 @@ const Dashboard = () => {
     );
   };
 
-  // Filter students based on search term
   const filteredStudents = students.filter(student =>
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -50,37 +44,40 @@ const Dashboard = () => {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={styles.dashboardContainer}>
       <Navbar />
       
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Search Bar */}
-        <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Search by name, email, course, or status..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 shadow-sm"
-          />
+      <div className={styles.dashboardContent}>
+        <div className={styles.searchContainer}>
+          <div className={styles.searchWrapper}>
+            <input
+              type="text"
+              placeholder="Search by name, email, course, or status..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={styles.searchInput}
+            />
+            <svg className={styles.searchIcon} width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
         </div>
 
-        {/* Add Student Form */}
         <StudentForm onAddStudent={handleAddStudent} />
 
-        {/* Students Table */}
-        <div className="mb-4">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            All Applications ({filteredStudents.length})
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>
+            All Applications
+            <span className={styles.badge}>{filteredStudents.length}</span>
           </h2>
         </div>
+
         <StudentTable
           students={filteredStudents}
           onDeleteStudent={handleDeleteStudent}
           onOpenStatusModal={setSelectedStudent}
         />
 
-        {/* Status Update Modal */}
         {selectedStudent && (
           <StatusModal
             student={selectedStudent}

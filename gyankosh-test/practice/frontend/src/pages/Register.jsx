@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/Button';
+import styles from '../styles/pages/Register.module.css';
 
-// Registration page component
 const Register = ({ onNavigate }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -16,7 +16,6 @@ const Register = ({ onNavigate }) => {
     setError('');
     setSuccess(false);
 
-    // Validation checks
     if (!name || !email || !password || !confirmPassword) {
       setError('Please fill in all fields');
       return;
@@ -32,16 +31,13 @@ const Register = ({ onNavigate }) => {
       return;
     }
 
-    // Try to register
     const registered = register(name, email, password);
     if (registered) {
       setSuccess(true);
-      // Clear fields
       setName('');
       setEmail('');
       setPassword('');
       setConfirmPassword('');
-      // Redirect to login after 2 seconds
       setTimeout(() => onNavigate('login'), 2000);
     } else {
       setError('Email already exists');
@@ -55,85 +51,92 @@ const Register = ({ onNavigate }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
-        <h2 className="text-3xl font-bold text-gray-800 mb-2 text-center">Create Account</h2>
-        <p className="text-gray-500 text-center mb-6">Join our admission portal</p>
+    <div className={styles.registerContainer}>
+      <div className={styles.registerCard}>
+        <div className={styles.header}>
+          <h2 className={styles.title}>Create Account</h2>
+          <p className={styles.subtitle}>Join our admission portal</p>
+        </div>
         
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+          <div className={`${styles.alert} ${styles.alertError}`}>
             {error}
           </div>
         )}
 
         {success && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+          <div className={`${styles.alert} ${styles.alertSuccess}`}>
             Account created successfully! Redirecting to login...
           </div>
         )}
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Full Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-              placeholder="John Doe"
-            />
+        <div className={styles.form}>
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Full Name</label>
+            <div className={styles.inputWrapper}>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className={styles.input}
+                placeholder="John Doe"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Email Address</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-              placeholder="you@example.com"
-            />
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Email Address</label>
+            <div className={styles.inputWrapper}>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className={styles.input}
+                placeholder="you@example.com"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-              placeholder="••••••••"
-            />
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Password</label>
+            <div className={styles.inputWrapper}>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className={styles.input}
+                placeholder="••••••••"
+              />
+            </div>
           </div>
 
-          <div>
-            <label className="block text-gray-700 font-medium mb-2">Confirm Password</label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              onKeyPress={handleKeyPress}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400"
-              placeholder="••••••••"
-            />
+          <div className={styles.formGroup}>
+            <label className={styles.label}>Confirm Password</label>
+            <div className={styles.inputWrapper}>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                onKeyPress={handleKeyPress}
+                className={styles.input}
+                placeholder="••••••••"
+              />
+            </div>
           </div>
 
-          <Button onClick={handleSubmit} variant="primary" className="w-full">
+          <Button onClick={handleSubmit} variant="primary" fullWidth={true}>
             Create Account
           </Button>
         </div>
 
-        <p className="text-center text-gray-600 mt-6">
+        <p className={styles.footer}>
           Already have an account?{' '}
-          <button
-            onClick={() => onNavigate('login')}
-            className="text-purple-500 font-medium hover:underline"
-          >
+          <span className={styles.link} onClick={() => onNavigate('login')}>
             Login here
-          </button>
+          </span>
         </p>
       </div>
     </div>
