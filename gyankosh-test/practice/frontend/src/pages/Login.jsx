@@ -7,24 +7,32 @@ const Login = ({ onNavigate }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError('');
+    setIsLoading(true);
 
+    // Basic validation
     if (!email || !password) {
       setError('Please fill in all fields');
+      setIsLoading(false);
       return;
     }
 
-    const success = login(email, password);
-    if (!success) {
-      setError('Invalid email or password');
+    // Call login API
+    const result = await login(email, password);
+    
+    if (!result.success) {
+      setError(result.error);
+      setIsLoading(false);
     }
+    // If success, user state will update and Dashboard will show automatically
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !isLoading) {
       handleSubmit();
     }
   };
@@ -54,6 +62,7 @@ const Login = ({ onNavigate }) => {
                 onKeyPress={handleKeyPress}
                 className={styles.input}
                 placeholder="you@example.com"
+                disabled={isLoading}
               />
             </div>
           </div>
@@ -68,18 +77,25 @@ const Login = ({ onNavigate }) => {
                 onKeyPress={handleKeyPress}
                 className={styles.input}
                 placeholder="••••••••"
+                disabled={isLoading}
               />
             </div>
           </div>
 
-          <Button onClick={handleSubmit} variant="primary" fullWidth={true}>
-            Login
+          <Button 
+            onClick={handleSubmit} 
+            variant="primary" 
+            fullWidth={true}
+            loading={isLoading}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Logging in...' : 'Login'}
           </Button>
         </div>
 
         <p className={styles.footer}>
           Don't have an account?{' '}
-          <span className={styles.link} onClick={() => onNavigate('register')}>
+          <span className={styles.link} onClick={() => !isLoading && onNavigate('register')}>
             Register here
           </span>
         </p>

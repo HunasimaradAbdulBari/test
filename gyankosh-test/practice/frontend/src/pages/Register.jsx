@@ -10,42 +10,56 @@ const Register = ({ onNavigate }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError('');
     setSuccess(false);
+    setIsLoading(true);
 
+    // Validation
     if (!name || !email || !password || !confirmPassword) {
       setError('Please fill in all fields');
+      setIsLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      setIsLoading(false);
       return;
     }
 
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
+      setIsLoading(false);
       return;
     }
 
-    const registered = register(name, email, password);
-    if (registered) {
+    // Call register API
+    const result = await register(name, email, password);
+    
+    if (result.success) {
       setSuccess(true);
       setName('');
       setEmail('');
       setPassword('');
       setConfirmPassword('');
-      setTimeout(() => onNavigate('login'), 2000);
+      
+      // Redirect to login after 2 seconds
+      setTimeout(() => {
+        onNavigate('login');
+      }, 2000);
     } else {
-      setError('Email already exists');
+      setError(result.error);
     }
+    
+    setIsLoading(false);
   };
 
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !isLoading) {
       handleSubmit();
     }
   };
@@ -81,6 +95,7 @@ const Register = ({ onNavigate }) => {
                 onKeyPress={handleKeyPress}
                 className={styles.input}
                 placeholder="John Doe"
+                disabled={isLoading || success}
               />
             </div>
           </div>
@@ -95,6 +110,7 @@ const Register = ({ onNavigate }) => {
                 onKeyPress={handleKeyPress}
                 className={styles.input}
                 placeholder="you@example.com"
+                disabled={isLoading || success}
               />
             </div>
           </div>
@@ -109,6 +125,7 @@ const Register = ({ onNavigate }) => {
                 onKeyPress={handleKeyPress}
                 className={styles.input}
                 placeholder="••••••••"
+                disabled={isLoading || success}
               />
             </div>
           </div>
@@ -123,18 +140,25 @@ const Register = ({ onNavigate }) => {
                 onKeyPress={handleKeyPress}
                 className={styles.input}
                 placeholder="••••••••"
+                disabled={isLoading || success}
               />
             </div>
           </div>
 
-          <Button onClick={handleSubmit} variant="primary" fullWidth={true}>
-            Create Account
+          <Button 
+            onClick={handleSubmit} 
+            variant="primary" 
+            fullWidth={true}
+            loading={isLoading}
+            disabled={isLoading || success}
+          >
+            {isLoading ? 'Creating Account...' : 'Create Account'}
           </Button>
         </div>
 
         <p className={styles.footer}>
           Already have an account?{' '}
-          <span className={styles.link} onClick={() => onNavigate('login')}>
+          <span className={styles.link} onClick={() => !isLoading && !success && onNavigate('login')}>
             Login here
           </span>
         </p>
