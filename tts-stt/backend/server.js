@@ -10,6 +10,7 @@ require('dotenv').config();
 const sttRoutes = require('./routes/sttRoutes');
 const ttsRoutes = require('./routes/ttsRoutes');
 const healthRoutes = require('./routes/healthRoutes');
+const transcriptRoutes = require('./routes/transcriptRoutes');
 
 // Import middleware
 const corsMiddleware = require('./middleware/cors');
@@ -71,7 +72,7 @@ app.use('*', (req, res) => {
 
 // Global error handler
 app.use(errorHandler);
-
+app.use('/api', transcriptRoutes);
 app.listen(PORT, () => {
   console.log(`🚀 Backend server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV}`);
